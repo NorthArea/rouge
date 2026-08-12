@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-PONG-5
 LAST_COMPLETED_TASK: T-PONG-4
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 88c7f80/T-PONG-3
+LAST_CHECKPOINT: e2fa50a/T-PONG-4
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-5 (гол за левой и правой границей, счёт двух игроков, возврат мяча в центр, чередование подачи, отображение счёта); зависимость `T-PONG-3` выполнена в коде.
 
 ## Реестр статусов задач
