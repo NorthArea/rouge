@@ -15,10 +15,12 @@ UNIT_TEST_DEFAULT := $(PYTHON) "$(PROJECT_ROOT)/scripts/framework_test.py"
 FULL_VERIFY_DEFAULT := $(PYTHON) "$(PROJECT_ROOT)/scripts/framework_test.py"
 FORMAT_CHECK_DEFAULT := git -C "$(PROJECT_ROOT)" diff --check
 
-UNIT_TEST_COMMAND ?= $(UNIT_TEST_DEFAULT)
-TARGETED_TEST_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/framework_test.py"
-FULL_VERIFY_COMMAND ?= $(FULL_VERIFY_DEFAULT)
-FORMAT_CHECK_COMMAND ?= $(FORMAT_CHECK_DEFAULT)
+CARGO_MANIFEST := "$(PROJECT_ROOT)/Cargo.toml"
+
+UNIT_TEST_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST)
+TARGETED_TEST_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST)
+FULL_VERIFY_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST)
+FORMAT_CHECK_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) -- --check
 BOUNDARY_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/boundary.py" --scan --root "$(PROJECT_ROOT)"
 CONTEXT_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/context.py" --check --root "$(PROJECT_ROOT)"
 
