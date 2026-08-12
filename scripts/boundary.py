@@ -158,10 +158,13 @@ def check_command(roots: tuple[Path, ...], command: str) -> str | None:
         if pattern.search(command):
             return reason
 
-    # Every granted root lives under a host path, so remove them before looking for escapes.
+    # Every granted root lives under a host path, so remove them before looking for escapes. The
+    # placeholder has to be a word, not a space: a repository-local `tmp/` named absolutely would
+    # otherwise be left as a bare ` /tmp` and read as an escape. ESCAPE refuses to match after a
+    # word character, so the remainder of a granted path stays anchored to the root it came from.
     stripped = URL.sub(" ", command)
     for root in roots:
-        stripped = stripped.replace(str(root), " ")
+        stripped = stripped.replace(str(root), "REPOROOT")
     if ESCAPE.search(stripped):
         return "the command references a path outside the repository; use repository-local tmp/ instead"
 

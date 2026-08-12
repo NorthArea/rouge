@@ -31,7 +31,7 @@ BOUNDARY_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/boundary.py" --scan
 CONTEXT_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/context.py" --check --root "$(PROJECT_ROOT)"
 
 .PHONY: help test test-target verify check format-check boundary-check context-check diff-check \
-	hook-session hook-boundary hook-post-bash hook-stop statusline
+	framework-test hook-session hook-boundary hook-post-bash hook-stop statusline
 
 help: ## Show the canonical command interface
 	@awk 'BEGIN {FS = ":.*##"; print "Usage: make <target>\n"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -70,11 +70,15 @@ context-check: ## Check that recovery context is internally consistent
 diff-check: ## Check whitespace errors in the Git diff
 	git diff --check
 
+framework-test: ## Run the framework's own self-test (hooks, boundary, context, agent wiring)
+	$(PYTHON) "$(PROJECT_ROOT)/scripts/framework_test.py"
+
 check: ## Run the complete local verification gate
 	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" format-check
 	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" boundary-check
 	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" context-check
 	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" diff-check
+	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" framework-test
 	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" test
 	$(MAKE) --no-print-directory -f "$(FRAMEWORK_MAKEFILE)" verify
 

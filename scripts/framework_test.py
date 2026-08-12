@@ -58,7 +58,7 @@ class FrameworkTests(unittest.TestCase):
         required = (
             "CLAUDE.md",
             "Makefile",
-            "README.md",
+            ".claude/README.md",
             ".claude/settings.json",
             "scripts/boundary.py",
             "scripts/context.py",
@@ -181,6 +181,16 @@ class BoundaryHookTests(unittest.TestCase):
         """Shell staples like /dev/null are not a way out of the repository."""
         self.assertIsNone(boundary.check_command(self.ROOTS, "make check > /dev/null 2>&1"))
         self.assertIsNone(boundary.check_command(self.ROOTS, "make test 2>/dev/stderr"))
+
+    def test_absolute_paths_inside_the_repository_are_allowed(self) -> None:
+        """Naming a repository-local target by its absolute path is not an escape.
+
+        Removing a granted root leaves the rest of the path behind, and that remainder must not read
+        as a host path on its own: a repository-local temporary directory turns into a bare host one
+        the moment the root in front of it is stripped away.
+        """
+        self.assertIsNone(boundary.check_command(self.ROOTS, f"make test > {ROOT / 'tmp' / 'red.log'}"))
+        self.assertIsNone(boundary.check_command(self.ROOTS, f"cat {ROOT / 'workflow' / 'backlog.md'}"))
 
     def test_destructive_git_commands_are_rejected(self) -> None:
         for command in (
