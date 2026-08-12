@@ -68,8 +68,10 @@ async fn main() {
         ball.update(delta_time);
 
         // 4. Проверка столкновений. Ракетки ограничены полем при обновлении, а мяч отражается от
-        // верхней и нижней границ именно здесь: это столкновение, а не перемещение.
+        // верхней и нижней границ и от ракеток именно здесь: это столкновение, а не перемещение.
         ball.bounce_off_field_edges(field);
+        ball.bounce_off_paddle(&left_paddle);
+        ball.bounce_off_paddle(&right_paddle);
 
         // 5. Рендеринг.
         draw_field(field);
