@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(uv run:*)",
+      "Bash(python3:*)",
+      "Bash(mkdir -p tmp*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git blame:*)",
+      "Bash(git check-ignore *)",
+      "Bash(git ls-files:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git mv *)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(awk:*)",
+      "Bash(cut:*)",
+      "Bash(tr:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(diff:*)",
+      "Bash(jq:*)",
+      "Bash(basename:*)",
+      "Bash(dirname:*)",
+      "Bash(stat:*)",
+      "Bash(file:*)",
+      "Bash(which:*)",
+      "Bash(date:*)",
+      "Bash(pwd:*)",
+      "Bash(du:*)",
+      "WebSearch",
+      "WebFetch",
+      "Bash(xargs -I{} basename {})",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(echo \"exit=${PIPESTATUS[0]}\")",
+      "Bash(echo \"EXIT:${PIPESTATUS[0]}\")"
+    ],
+    "deny": [
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Read(//var/**)",
+      "Edit(//tmp/**)",
+      "Edit(//private/tmp/**)",
+      "Edit(//var/folders/**)",
+      "Write(//tmp/**)",
+      "Write(//private/tmp/**)",
+      "Write(//var/folders/**)",
+      "Bash(sudo:*)",
+      "Bash(brew install:*)",
+      "Bash(brew uninstall:*)",
+      "Bash(pip install:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)"
+    ],
+    "additionalDirectories": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make --no-print-directory -C \"$CLAUDE_PROJECT_DIR\" hook-session",
+            "timeout": 15,
+            "statusMessage": "Loading workflow recovery pointer"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|NotebookEdit|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make --no-print-directory -C \"$CLAUDE_PROJECT_DIR\" hook-boundary",
+            "timeout": 15,
+            "statusMessage": "Repository boundary check"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make --no-print-directory -C \"$CLAUDE_PROJECT_DIR\" hook-post-bash",
+            "timeout": 30,
+            "statusMessage": "Registry consistency after commit"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make --no-print-directory -C \"$CLAUDE_PROJECT_DIR\" hook-stop",
+            "timeout": 30,
+            "statusMessage": "Workflow consistency gate"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "make --no-print-directory -C \"$CLAUDE_PROJECT_DIR\" statusline"
+  }
+}
