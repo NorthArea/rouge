@@ -27,10 +27,11 @@ FULL_VERIFY_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) -- --check &&
 	cargo test --manifest-path $(CARGO_MANIFEST) && \
 	cargo build --manifest-path $(CARGO_MANIFEST)
 FORMAT_CHECK_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) -- --check
+FORMAT_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST)
 BOUNDARY_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/boundary.py" --scan --root "$(PROJECT_ROOT)"
 CONTEXT_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/context.py" --check --root "$(PROJECT_ROOT)"
 
-.PHONY: help test test-target verify check format-check boundary-check context-check diff-check \
+.PHONY: help test test-target verify check format-check format boundary-check context-check diff-check \
 	framework-test hook-session hook-boundary hook-post-bash hook-stop statusline
 
 help: ## Show the canonical command interface
@@ -58,6 +59,10 @@ format-check: ## Check formatting
 	@test "$(FORMAT_CHECK_COMMAND)" != "$(FORMAT_CHECK_DEFAULT)" || \
 		printf '%s\n' 'format-check: FORMAT_CHECK_COMMAND is still the framework default — override it in the project Makefile' >&2
 	$(FORMAT_CHECK_COMMAND)
+
+format: ## Apply the project's formatter, so a red format-check has a fix behind the same interface
+	@test -n "$(FORMAT_COMMAND)" || (printf '%s\n' 'FORMAT_COMMAND is required' >&2; exit 1)
+	$(FORMAT_COMMAND)
 
 boundary-check: ## Check that agent-facing files stay inside the repository
 	@test -n "$(BOUNDARY_CHECK_COMMAND)" || (printf '%s\n' 'BOUNDARY_CHECK_COMMAND is required' >&2; exit 1)
