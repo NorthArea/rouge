@@ -1,10 +1,12 @@
 use macroquad::prelude::*;
 
 mod ball;
+mod game;
 mod paddle;
 mod score;
 
 use ball::Ball;
+use game::{Game, GameState};
 use paddle::Paddle;
 use score::Score;
 
@@ -21,6 +23,13 @@ const SCORE_FONT_SIZE: u16 = 56;
 /// Отступ счёта от центральной линии и высота его строки от верхней границы поля.
 const SCORE_MARGIN: f32 = 48.0;
 const SCORE_BASELINE: f32 = 96.0;
+
+/// Подсказка о том, как начать раунд. Показывается только в ожидании подачи, поэтому не мешает игре.
+/// Текст латиницей: встроенный шрифт Macroquad не гарантирует кириллических глифов, а проверить это
+/// автотестом нельзя — рендеринг не тестируется.
+const HINT_TEXT: &str = "PRESS SPACE TO SERVE";
+const HINT_FONT_SIZE: u16 = 28;
+const HINT_BASELINE_FROM_BOTTOM: f32 = 64.0;
 
 /// Игровое поле. Размеры приходят значением из размеров окна, поэтому игровая логика не обращается
 /// к состоянию Macroquad и остаётся вызываемой сама по себе.
@@ -51,10 +60,7 @@ async fn main() {
     // Окно не изменяет размер, поэтому поле — данные, заданные один раз, а не результат опроса
     // Macroquad в каждом кадре.
     let field = Field::new(screen_width(), screen_height());
-    let mut left_paddle = Paddle::left(field);
-    let mut right_paddle = Paddle::right(field);
-    let mut ball = Ball::new(field);
-    let mut score = Score::default();
+    let mut game = Game::new(field);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -64,36 +70,35 @@ async fn main() {
         if is_key_pressed(KeyCode::Escape) {
             break;
         }
+        // Старт раунда и рестарт матча — разовые нажатия, а не удержание: игра реагирует на нажатие
+        // один раз, сколько бы кадров клавишу ни держали.
+        if is_key_pressed(KeyCode::Space) {
+            game.start_round();
+        }
+        if is_key_pressed(KeyCode::R) {
+            game.restart_match();
+        }
         let left_direction = read_direction(KeyCode::W, KeyCode::S);
         let right_direction = read_direction(KeyCode::Up, KeyCode::Down);
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
 
-        // 3. Обновление состояния.
-        left_paddle.update(left_direction, field, delta_time);
-        right_paddle.update(right_direction, field, delta_time);
-        ball.update(delta_time);
-
-        // 4. Проверка столкновений. Ракетки ограничены полем при обновлении, а мяч отражается от
-        // верхней и нижней границ и от ракеток именно здесь: это столкновение, а не перемещение.
-        ball.bounce_off_field_edges(field);
-        ball.bounce_off_paddle(&left_paddle);
-        ball.bounce_off_paddle(&right_paddle);
-
-        // Гол проверяется здесь же, после того как мяч уже переместился и отскочил: ушедший за
-        // боковую границу мяч приносит очко противнику и возвращается в центр, откуда сразу уходит
-        // следующая подача. Паузы между раундами тут ещё нет — она появится вместе с состояниями игры.
-        if score.count_goal(&ball, field) {
-            ball.reset(field);
-        }
+        // 3. Обновление состояния и 4. проверка столкновений. Обе стадии зависят от состояния игры,
+        // поэтому они перешли внутрь `Game::update` и перечислены в том же порядке там: до подачи
+        // двигаются только ракетки, в раунде мяч летит, сталкивается и приносит гол, а в кадре гола
+        // возвращается в центр.
+        game.update(left_direction, right_direction, delta_time);
 
         // 5. Рендеринг.
         draw_field(field);
-        draw_score(&score, field);
-        draw_paddle(&left_paddle);
-        draw_paddle(&right_paddle);
-        draw_ball(&ball);
+        draw_score(&game.score, field);
+        draw_paddle(&game.left_paddle);
+        draw_paddle(&game.right_paddle);
+        draw_ball(&game.ball);
+        if game.state == GameState::WaitingToStart {
+            draw_hint(field);
+        }
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -148,6 +153,20 @@ fn draw_score(score: &Score, field: Field) {
         center_x + SCORE_MARGIN,
         SCORE_BASELINE,
         f32::from(SCORE_FONT_SIZE),
+        FIELD_COLOR,
+    );
+}
+
+/// Подсказка про `Space` внизу поля, по центру. Ширину строки нужно измерить: центрировать текст
+/// иначе нечем.
+fn draw_hint(field: Field) {
+    let width = measure_text(HINT_TEXT, None, HINT_FONT_SIZE, 1.0).width;
+
+    draw_text(
+        HINT_TEXT,
+        (field.width - width) / 2.0,
+        field.height - HINT_BASELINE_FROM_BOTTOM,
+        f32::from(HINT_FONT_SIZE),
         FIELD_COLOR,
     );
 }
