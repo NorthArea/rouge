@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-PONG-6
 LAST_COMPLETED_TASK: T-PONG-5
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: e2fa50a/T-PONG-4
+LAST_CHECKPOINT: 21c3270/T-PONG-5
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-6 (состояния игры `WaitingToStart` / `Playing` / `PointScored`, старт раунда по `Space`, restart матча по `R`); зависимости `T-PONG-4` и `T-PONG-5` выполнены в коде.
 
 ## Реестр статусов задач
