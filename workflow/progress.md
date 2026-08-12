@@ -6,11 +6,11 @@
 
 PROJECT_STATUS: IN_PROGRESS
 CURRENT_TASK: none
-NEXT_BACKLOG_ID: none
+NEXT_BACKLOG_ID: T-PONG-1
 LAST_COMPLETED_TASK: none
 LAST_GREEN_COMMAND: <exact command>
 LAST_CHECKPOINT: <short-sha>/<TASK_ID>
-NEXT_ACTION: Добавить задачу в workflow/backlog.md перед началом реализации.
+NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-1 (cargo-проект в корне, Macroquad, окно, game loop, поле, выход по Esc).
 
 ## Реестр статусов задач
 

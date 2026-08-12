@@ -204,9 +204,14 @@ infrastructure — stack knowledge belongs in the project's own contract and roa
 
 | Role | Owns | Write zone |
 |---|---|---|
-| **Manager** (main session) | Talking to the owner, dispatching work to `architect` and `developer`, operational decisions, repository governance, resolving conflicts between reports. | Governance files: `workflow/` consistency corrections, `.claude/` (agents, settings, commands), `CLAUDE.md`, `README.md`, `Makefile`, `scripts/`. Never implementation code. |
+| **Manager** (main session) | Talking to the owner, dispatching work to `architect` and `developer`, operational decisions, repository governance, resolving conflicts between reports. | Governance files: `workflow/` consistency corrections, `.claude/` (agents, settings, commands, `.claude/README.md`), `CLAUDE.md`, `Makefile`, `scripts/`. Never implementation code, and never the product `README.md` at the repository root. |
 | `architect` | Thinking. Takes an idea from the manager, develops it in `workflow/source/`, and gradually distills it into `workflow/roadmap.md` and `workflow/backlog.md`. Also review, audit and research. | `workflow/source/`, `workflow/roadmap.md`, `workflow/backlog.md`. |
-| `developer` | Building. One queue task from card to checkpoint commit, per the Task Lifecycle. | The task's code and tests, `workflow/progress.md`, `workflow/tasks/`, deleting its completed entry from `workflow/backlog.md`. |
+| `developer` | Building. One queue task from card to checkpoint commit, per the Task Lifecycle. | The task's code and tests, the product `README.md`, `workflow/progress.md`, `workflow/tasks/`, deleting its completed entry from `workflow/backlog.md`. |
+
+Two READMEs, deliberately: `.claude/README.md` documents this agent framework and is governance; the
+root `README.md` documents the product the repository builds and is written by `developer` as ordinary
+task work. A repository that has not yet produced its product has no root `README.md`, and that is not
+a defect.
 
 The manager does not plan and does not implement — not even a one-line fix. Product and code work
 arrives at the repository only through the two subagents; the manager dispatches, reads their reports,

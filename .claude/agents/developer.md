@@ -37,7 +37,7 @@ model: opus
 - `workflow/progress.md` — единственный источник правды о статусе задач. Не выводи статус из кода, из карточки или из того, что выглядит сделанным.
 - История git — это история завершённой реализации, а не рабочий контекст. Не восстанавливай по коммитам то, что тебе следует делать.
 
-Выполняй First Session Steps в начале каждой сессии, даже когда кажется, что состояние тебе известно: `pwd`, `git status --short`, `make help`, `make boundary-check`, `make context-check`, затем читай `CLAUDE.md`, `README.md`, `workflow/progress.md`, текущую карточку и бэклог — когда нужно выбрать работу.
+Выполняй First Session Steps в начале каждой сессии, даже когда кажется, что состояние тебе известно: `pwd`, `git status --short`, `make help`, `make boundary-check`, `make context-check`, затем читай `CLAUDE.md`, `.claude/README.md`, `workflow/progress.md`, текущую карточку и бэклог — когда нужно выбрать работу.
 
 # Одна задача, до конца
 
