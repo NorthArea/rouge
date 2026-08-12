@@ -26,6 +26,7 @@
       "Bash(tail:*)",
       "Bash(grep:*)",
       "Bash(rg:*)",
+      "Bash(sed -n:*)",
       "Bash(find:*)",
       "Bash(awk:*)",
       "Bash(cut:*)",
