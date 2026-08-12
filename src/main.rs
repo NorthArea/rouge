@@ -1,7 +1,9 @@
 use macroquad::prelude::*;
 
+mod ball;
 mod paddle;
 
+use ball::Ball;
 use paddle::Paddle;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
@@ -44,10 +46,11 @@ async fn main() {
     let field = Field::new(screen_width(), screen_height());
     let mut left_paddle = Paddle::left(field);
     let mut right_paddle = Paddle::right(field);
+    let mut ball = Ball::new(field);
 
     loop {
-        // Кадр всегда проходит одни и те же стадии в одном и том же порядке. Сталкивать пока нечего,
-        // но стадия уже занимает своё место: порядок стадий — часть того, что этот проект показывает.
+        // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
+        // того, что этот проект показывает.
 
         // 1. Чтение ввода.
         if is_key_pressed(KeyCode::Escape) {
@@ -62,14 +65,17 @@ async fn main() {
         // 3. Обновление состояния.
         left_paddle.update(left_direction, field, delta_time);
         right_paddle.update(right_direction, field, delta_time);
+        ball.update(delta_time);
 
-        // 4. Проверка столкновений.
-        check_collisions(field);
+        // 4. Проверка столкновений. Ракетки ограничены полем при обновлении, а мяч отражается от
+        // верхней и нижней границ именно здесь: это столкновение, а не перемещение.
+        ball.bounce_off_field_edges(field);
 
         // 5. Рендеринг.
         draw_field(field);
         draw_paddle(&left_paddle);
         draw_paddle(&right_paddle);
+        draw_ball(&ball);
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -86,18 +92,22 @@ fn read_direction(up: KeyCode, down: KeyCode) -> f32 {
     }
 }
 
-fn check_collisions(_field: Field) {}
-
 fn draw_field(field: Field) {
     clear_background(BACKGROUND_COLOR);
     draw_center_line(field);
     draw_borders(field);
 }
 
-/// Ракетки рисуются тем же светлым цветом, что и разметка поля: классический Pong контрастен и
+/// Ракетки и мяч рисуются тем же светлым цветом, что и разметка поля: классический Pong контрастен и
 /// обходится одним цветом на всё, кроме фона.
 fn draw_paddle(paddle: &Paddle) {
     draw_rectangle(paddle.x, paddle.y, paddle.width, paddle.height, FIELD_COLOR);
+}
+
+/// Мяч рисуется квадратом, а не кругом: так изображение совпадает с прямоугольником, по которому
+/// считаются столкновения.
+fn draw_ball(ball: &Ball) {
+    draw_rectangle(ball.x, ball.y, ball.size, ball.size, FIELD_COLOR);
 }
 
 /// Центральная линия — не сплошная линия, а столбик отдельных штрихов: так выглядит классический Pong.
