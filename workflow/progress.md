@@ -6,11 +6,11 @@
 
 PROJECT_STATUS: IN_PROGRESS
 CURRENT_TASK: none
-NEXT_BACKLOG_ID: T-PONG-2
-LAST_COMPLETED_TASK: T-PONG-1
+NEXT_BACKLOG_ID: T-PONG-3
+LAST_COMPLETED_TASK: T-PONG-2
 LAST_GREEN_COMMAND: make check
 LAST_CHECKPOINT: aad74f3/T-PONG-1
-NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-2 (ракетки: модель, движение через delta time, ограничение границами поля, управление `W`/`S` и `↑`/`↓`, отрисовка).
+NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-3 (мяч: позиция, вектор скорости, движение через delta time, отражение от верхней и нижней границ, отрисовка).
 
 ## Реестр статусов задач
 
@@ -20,3 +20,4 @@ NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-
 | Task | Status | Scope / result | Verification |
 |------|--------|----------------|--------------|
 | T-PONG-1 | DONE | Cargo-проект Pong живёт в корне репозитория и открывает окно с полем: Macroquad подключён, game loop показывает стадии кадра явно, поле с рамкой и пунктирной центральной линией нарисовано, `Esc` закрывает игру. | RED: `make test` → exit 2, `manifest path .../Cargo.toml does not exist`. GREEN: `make test` → exit 0. Полный гейт: `make check` → exit 0. Unit-тестов нет по D-10 (рендеринг и ввод не тестируются). Специальный gate: прогон `cargo run` выполнял владелец, а не агент; gate подтверждён владельцем, дословный ответ — «ага, видно». |
+| T-PONG-2 | DONE | Обе ракетки существуют как данные и движутся по вертикали через delta time с ограничением границами поля: логика ракетки вызывается из тестов без окна, `W`/`S` и `↑`/`↓` привязаны в стадии чтения ввода, обе ракетки нарисованы. | RED наблюдался по одному тесту за цикл, `make test-target TEST=<имя>` → exit 2 каждый раз: движение отсутствовало (`y = 250, ожидалось 450`); перемещение игнорировало направление (`секунда без ввода сдвинула ракетку: y = 450.00058`); не было верхней границы (`y = -149.99986, ожидалось 0`); не было нижней (`y = 649.99994, ожидалось 500`). GREEN: `make test` → exit 0 (4 passed). Точечно: `make test-target TEST=paddle` → exit 0. Полный гейт: `make check` → exit 0. Привязка клавиш и отрисовка unit-тестами не покрыты по D-10; фактическое управление подтверждается наблюдаемым прогоном в `T-PONG-8`. |

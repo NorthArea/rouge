@@ -1,5 +1,9 @@
 use macroquad::prelude::*;
 
+mod paddle;
+
+use paddle::Paddle;
+
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
 const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
 const FIELD_COLOR: Color = Color::new(0.88, 0.89, 0.93, 1.0);
@@ -12,13 +16,13 @@ const CENTER_LINE_GAP: f32 = 16.0;
 /// Игровое поле. Размеры приходят значением из размеров окна, поэтому игровая логика не обращается
 /// к состоянию Macroquad и остаётся вызываемой сама по себе.
 #[derive(Clone, Copy)]
-struct Field {
-    width: f32,
-    height: f32,
+pub struct Field {
+    pub width: f32,
+    pub height: f32,
 }
 
 impl Field {
-    fn new(width: f32, height: f32) -> Self {
+    pub fn new(width: f32, height: f32) -> Self {
         Self { width, height }
     }
 }
@@ -35,35 +39,52 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // Окно не изменяет размер, поэтому поле — данные, заданные один раз, а не результат опроса
+    // Macroquad в каждом кадре.
+    let field = Field::new(screen_width(), screen_height());
+    let mut left_paddle = Paddle::left(field);
+    let mut right_paddle = Paddle::right(field);
+
     loop {
-        // Кадр всегда проходит одни и те же стадии в одном и том же порядке. Двигать и сталкивать
-        // пока нечего, но стадии уже занимают своё место: порядок стадий — часть того, что этот
-        // проект показывает.
+        // Кадр всегда проходит одни и те же стадии в одном и том же порядке. Сталкивать пока нечего,
+        // но стадия уже занимает своё место: порядок стадий — часть того, что этот проект показывает.
 
         // 1. Чтение ввода.
         if is_key_pressed(KeyCode::Escape) {
             break;
         }
+        let left_direction = read_direction(KeyCode::W, KeyCode::S);
+        let right_direction = read_direction(KeyCode::Up, KeyCode::Down);
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
 
         // 3. Обновление состояния.
-        let field = Field::new(screen_width(), screen_height());
-        update(field, delta_time);
+        left_paddle.update(left_direction, field, delta_time);
+        right_paddle.update(right_direction, field, delta_time);
 
         // 4. Проверка столкновений.
         check_collisions(field);
 
         // 5. Рендеринг.
         draw_field(field);
+        draw_paddle(&left_paddle);
+        draw_paddle(&right_paddle);
 
         // 6. Следующий кадр.
         next_frame().await;
     }
 }
 
-fn update(_field: Field, _delta_time: f32) {}
+/// Обе ракетки читают ввод одинаково. Клавиша считается зажатой, а не нажатой один раз: движение
+/// длится, пока клавишу держат. Обе клавиши сразу или ни одной — ракетка стоит.
+fn read_direction(up: KeyCode, down: KeyCode) -> f32 {
+    match (is_key_down(up), is_key_down(down)) {
+        (true, false) => paddle::UP,
+        (false, true) => paddle::DOWN,
+        _ => paddle::STILL,
+    }
+}
 
 fn check_collisions(_field: Field) {}
 
@@ -71,6 +92,12 @@ fn draw_field(field: Field) {
     clear_background(BACKGROUND_COLOR);
     draw_center_line(field);
     draw_borders(field);
+}
+
+/// Ракетки рисуются тем же светлым цветом, что и разметка поля: классический Pong контрастен и
+/// обходится одним цветом на всё, кроме фона.
+fn draw_paddle(paddle: &Paddle) {
+    draw_rectangle(paddle.x, paddle.y, paddle.width, paddle.height, FIELD_COLOR);
 }
 
 /// Центральная линия — не сплошная линия, а столбик отдельных штрихов: так выглядит классический Pong.
