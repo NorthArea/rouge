@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-PONG-3
 LAST_COMPLETED_TASK: T-PONG-2
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: aad74f3/T-PONG-1
+LAST_CHECKPOINT: 8724c8c/T-PONG-2
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-3 (мяч: позиция, вектор скорости, движение через delta time, отражение от верхней и нижней границ, отрисовка).
 
 ## Реестр статусов задач
