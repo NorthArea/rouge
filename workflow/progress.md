@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-PONG-7
 LAST_COMPLETED_TASK: T-PONG-6
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 21c3270/T-PONG-5
+LAST_CHECKPOINT: 8f92fba/T-PONG-6
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-7 (`README.md` по семи разделам ТЗ для программиста, впервые изучающего game development); зависимость `T-PONG-6` выполнена в коде.
 
 ## Реестр статусов задач
