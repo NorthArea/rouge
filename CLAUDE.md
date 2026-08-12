@@ -259,6 +259,17 @@ dispatches included, not only the `/workflow:` commands — so the session stays
 while the work runs; reports are relayed as they arrive. A foreground dispatch freezes the manager for
 the whole run and is never the default.
 
+**Redirect a running subagent, do not stop it.** A subagent carries its context only while it lives: a
+stopped one cannot be resumed, and its reading, its verification and its half-finished reasoning are
+gone for good, so the work restarts from nothing. When a dispatch turns out to be wrong — wrong premise,
+changed decision, narrowed scope — send the correction as a message to the running agent instead. Stop
+one only to abandon its work outright.
+
+**A dispatch carries the decisions, not the questions.** Before dispatching, the manager settles what
+the agent would otherwise stall on or reopen: which owner decisions already apply, which apparent stop
+conditions are not stop conditions, and what the agent must not touch because someone else holds it.
+An agent that stops to ask what the manager could have decided has been dispatched badly.
+
 Any other subagent is for read-only investigation that would otherwise flood the main context. Such a
 subagent never edits `workflow/`, never commits, and its report is evidence, not verification: only a
 command that ran in the current session counts.
@@ -273,9 +284,17 @@ command that ran in the current session counts.
 - Never reset hard, clean the worktree, force-push, create tags or update a remote unless explicitly allowed
   by the project contract.
 - Never weaken tests or hide failures.
+- A test that passes the first time it runs proves nothing yet. Say so, then make it fail on purpose:
+  mutate the production code it covers, watch that test go red while the others stay green, revert the
+  mutation and verify the file came back byte for byte. Record the mutation and the revert.
 - Resolve uncertain APIs with the compiler and the repository's canonical build command.
 - Run `make boundary-check` and `make context-check` before handing work to another agent.
 - Commit only after full verification; the commit message names the task ID.
+- Name every path when committing. `git mv`, `git rm` and `git add` leave changes staged, and a bare
+  `git commit` sweeps the whole index into a message written for something else. Read
+  `git status --short` before each commit and stage explicitly.
+- Never delete an untracked file that carries the owner's own words. Commit it first, then delete it in
+  a second commit: the deletion stays reversible and the record survives in history.
 
 ## Completion Report
 
