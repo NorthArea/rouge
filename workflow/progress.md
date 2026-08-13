@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-9
 LAST_COMPLETED_TASK: T-ARK-8
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 5f7eae9/T-ARK-7
+LAST_CHECKPOINT: 35d308d/T-ARK-8
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-9 (бонус `Wide Paddle` в Arkanoid: детерминированное выпадение каждого четвёртого разрушаемого блока, падение через delta time, поимка ракеткой, временное расширение, снятие эффекта). Зависимость `T-ARK-8` выполнена: три уровня, переходы и полный рестарт существуют и покрыты тестами. Специального gate у позиции нет.
 
 ## Реестр статусов задач
