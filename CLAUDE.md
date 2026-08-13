@@ -201,6 +201,15 @@ lives in `scripts/` behind the same interface and is listed by `make help`.
 `make` targets are pre-approved in `.claude/settings.json`. A command that needs a permission prompt is a
 signal to add a `make` target, not to widen permissions ad hoc.
 
+Two habits keep that promise from leaking. Shell expansion (`$?`, `${PIPESTATUS[0]}`) forces the
+permission layer to match a command exactly rather than by prefix, so an invented label like
+`echo "boundary exit=$?"` prompts the owner while the identical command with a known label does not.
+Use the labels the allowlist already carries — `echo "exit=$?"` and `echo "exit=${PIPESTATUS[0]}"` —
+and say which command produced the code in your own words instead of in the label. And reach for the
+read-only text tools that are already granted (`grep`, `rg`, `cut`, `awk`, `head`, `tail`, `sed -n`);
+`sed 's/…/…/'` is not among them, because the same tool rewrites files in place. Adding an allowlist
+entry per phrasing is not a fix — it is the same prompt again under a new name.
+
 ## Roles
 
 Work in this repository is split between three roles with a hard boundary. The main console session is

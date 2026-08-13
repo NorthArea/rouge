@@ -17,17 +17,19 @@ FORMAT_CHECK_DEFAULT := git -C "$(PROJECT_ROOT)" diff --check
 
 CARGO_MANIFEST := "$(PROJECT_ROOT)/Cargo.toml"
 
-UNIT_TEST_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST)
-TARGETED_TEST_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST)
+# The repository holds one crate per game, so every command covers the whole workspace: a gate that
+# checked only the default members would go quietly green while another game was broken.
+UNIT_TEST_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST) --workspace
+TARGETED_TEST_COMMAND ?= cargo test --manifest-path $(CARGO_MANIFEST) --workspace
 # The project contract requires four commands to pass with no warnings left behind, so the full gate
 # runs all four rather than duplicating UNIT_TEST_COMMAND. Keeping clippy and build here means they
 # are part of the ordinary gate, not a special gate repeated on every queue position.
-FULL_VERIFY_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) -- --check && \
-	cargo clippy --manifest-path $(CARGO_MANIFEST) --all-targets --all-features -- -D warnings && \
-	cargo test --manifest-path $(CARGO_MANIFEST) && \
-	cargo build --manifest-path $(CARGO_MANIFEST)
-FORMAT_CHECK_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) -- --check
-FORMAT_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST)
+FULL_VERIFY_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) --all -- --check && \
+	cargo clippy --manifest-path $(CARGO_MANIFEST) --workspace --all-targets --all-features -- -D warnings && \
+	cargo test --manifest-path $(CARGO_MANIFEST) --workspace && \
+	cargo build --manifest-path $(CARGO_MANIFEST) --workspace
+FORMAT_CHECK_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) --all -- --check
+FORMAT_COMMAND ?= cargo fmt --manifest-path $(CARGO_MANIFEST) --all
 BOUNDARY_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/boundary.py" --scan --root "$(PROJECT_ROOT)"
 CONTEXT_CHECK_COMMAND ?= $(PYTHON) "$(PROJECT_ROOT)/scripts/context.py" --check --root "$(PROJECT_ROOT)"
 
