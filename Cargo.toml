@@ -1,3 +1,4 @@
 [workspace]
 resolver = "2"
-members = ["pong", "arkanoid"]
+members = ["pong", "arkanoid", "menu"]
+default-members = ["menu"]
