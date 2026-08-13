@@ -535,6 +535,31 @@ mod tests {
         );
     }
 
+    /// Ракетка слушается игрока в любом состоянии, включая законченную игру: это то же решение,
+    /// что уже принято для Pong в `T-PONG-6` (`paddles_move_while_waiting_for_the_serve`,
+    /// "ракетки управляются во всех состояниях"). `game_over_freezes_the_frame` и
+    /// `game_won_freezes_the_frame` намеренно проверяют только мяч и счёт — то, что действительно
+    /// обязано стоять на месте, — и не трогают ракетку; этот тест закрывает оставшуюся
+    /// двусмысленность явно, а не оставляет её непроверенным совпадением.
+    #[test]
+    fn terminal_states_still_move_the_paddle() {
+        for state in [GameState::GameOver, GameState::GameWon] {
+            let started_in = format!("{state:?}");
+            let mut game = Game::new(field());
+            game.state = state;
+            let started_at = game.paddle.x;
+
+            game.update(RIGHT, FRAME);
+
+            assert!(
+                game.paddle.x > started_at,
+                "ракетка не сдвинулась в состоянии {}: x = {}",
+                started_in,
+                game.paddle.x
+            );
+        }
+    }
+
     /// Рестарт доступен в любой момент, поэтому проверяются все состояния: это единственный способ
     /// начать игру заново, не выходя из неё.
     #[test]
