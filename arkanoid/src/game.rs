@@ -1,4 +1,5 @@
 use crate::ball::Ball;
+use crate::bonus::{self, Bonus};
 use crate::brick::{self, Brick, BrickKind};
 use crate::level;
 use crate::paddle::Paddle;
@@ -7,6 +8,9 @@ use crate::Field;
 
 /// Сколько раз игрок может потерять мяч, прежде чем игра закончится.
 const LIVES: u32 = 3;
+/// Каждый какой по счёту уничтоженный разрушаемый блок роняет бонус. Выпадение детерминировано
+/// (D-19): генератора случайных чисел в проекте нет, а на глаз это неотличимо от «иногда».
+const BONUS_EVERY: u32 = 4;
 
 /// Состояние игры. Простой перечислимый тип и ничего больше: переходов немного, они видны в `update`
 /// целиком, и никакой машины состояний для них не нужно.
@@ -33,6 +37,9 @@ pub struct Game {
     pub paddle: Paddle,
     pub ball: Ball,
     pub bricks: Vec<Brick>,
+    pub bonuses: Vec<Bonus>,
+    /// Сколько разрушаемых блоков уничтожено с прошлого выпавшего бонуса.
+    destroyed_since_drop: u32,
     pub score: Score,
     pub lives: u32,
     /// Номер текущего уровня, начиная с первого. Его видит игрок, поэтому нумерация с единицы.
@@ -51,6 +58,8 @@ impl Game {
             paddle,
             ball,
             bricks: level::bricks(level::FIRST, field),
+            bonuses: Vec::new(),
+            destroyed_since_drop: 0,
             score: Score::default(),
             lives: LIVES,
             level: level::FIRST,
@@ -84,8 +93,17 @@ impl Game {
     fn advance_level(&mut self) {
         self.level += 1;
         self.bricks = level::bricks(self.level, self.field);
+        self.clear_bonuses();
         self.ball.rest_on(&self.paddle);
         self.state = GameState::WaitingToStart;
+    }
+
+    /// Бонусы не переживают перелом в игре: падающие исчезают, эффект снимается, счёт до следующего
+    /// выпадения начинается заново.
+    fn clear_bonuses(&mut self) {
+        self.bonuses.clear();
+        self.destroyed_since_drop = 0;
+        self.paddle.narrow();
     }
 
     /// Обновление за один кадр. Направление ракетки и delta time приходят аргументами, поэтому
@@ -109,9 +127,22 @@ impl Game {
     /// проверка столкновений.
     fn play(&mut self, delta_time: f32) {
         self.ball.update(delta_time);
+        bonus::update(&mut self.bonuses, &mut self.paddle, self.field, delta_time);
         self.ball.bounce_off_walls(self.field);
         self.ball.bounce_off_paddle(&self.paddle);
+
+        // Уничтоженный блок узнаётся по тому, что разрушаемых стало меньше: за кадр мяч разбивает
+        // не больше одного, а бонус выпадает там, где мяч этот блок и застал.
+        let breakable_before = self.breakable_left();
         brick::bounce_off_bricks(&mut self.ball, &mut self.bricks, &mut self.score);
+        if self.breakable_left() < breakable_before {
+            self.destroyed_since_drop += 1;
+
+            if self.destroyed_since_drop.is_multiple_of(BONUS_EVERY) {
+                self.bonuses
+                    .push(Bonus::dropped_at(self.ball.x, self.ball.y));
+            }
+        }
 
         if self.level_cleared() {
             // Последний уровень заканчивается победой сразу, без промежуточного ожидания: следующего
@@ -134,16 +165,23 @@ impl Game {
     /// Уровень пройден, когда разрушаемых блоков не осталось. Неразрушимые в счёт не идут: убрать их
     /// с поля нельзя, и ожидание их уничтожения заперло бы игрока на уровне навсегда.
     fn level_cleared(&self) -> bool {
+        self.breakable_left() == 0
+    }
+
+    /// Сколько разрушаемых блоков ещё стоит на поле. Неразрушимые не считаются нигде: их нельзя ни
+    /// разбить, ни дождаться, и в выпадении бонусов они тоже не участвуют.
+    fn breakable_left(&self) -> usize {
         self.bricks
             .iter()
-            .filter(|brick| brick.kind != BrickKind::Indestructible)
-            .all(|brick| brick.destroyed())
+            .filter(|brick| brick.kind != BrickKind::Indestructible && !brick.destroyed())
+            .count()
     }
 
     /// Мяч потерян: жизнь списывается, мяч возвращается на ракетку, раунд ждёт нового `Space`.
     /// Если жизней не осталось, ждать больше нечего — игра закончена.
     fn lose_life(&mut self) {
         self.lives -= 1;
+        self.clear_bonuses();
         self.ball.rest_on(&self.paddle);
         self.state = if self.lives == 0 {
             GameState::GameOver
@@ -188,6 +226,19 @@ mod tests {
         game.ball.velocity_x = 0.0;
         game.ball.velocity_y = 0.0;
         game
+    }
+
+    /// Один кадр, в котором мяч разбивает единственный блок заданного типа. Возвращает игру после
+    /// удара, чтобы серию ударов можно было выстроить подряд.
+    fn break_one_brick(game: &mut Game, kind: BrickKind) {
+        game.state = GameState::Playing;
+        game.bricks = vec![Brick::new(300.0, 100.0, 80.0, 24.0, kind)];
+        game.ball.x = 330.0;
+        game.ball.y = 114.0;
+        game.ball.velocity_x = 0.0;
+        game.ball.velocity_y = 0.0;
+
+        game.update(STILL, FRAME);
     }
 
     #[test]
@@ -516,5 +567,94 @@ mod tests {
                 game.state
             );
         }
+    }
+
+    /// Выпадение детерминировано (D-19): бонус роняет каждый четвёртый разрушаемый блок, а не
+    /// случайный. Именно поэтому его можно проверить тестом.
+    #[test]
+    fn every_fourth_destroyed_brick_drops_a_bonus() {
+        let mut game = Game::new(field());
+
+        for hit in 1..=4 {
+            break_one_brick(&mut game, BrickKind::Normal);
+
+            let expected = usize::from(hit == 4);
+            assert_eq!(
+                game.bonuses.len(),
+                expected,
+                "после {} уничтоженного блока бонусов {}, ожидалось {}",
+                hit,
+                game.bonuses.len(),
+                expected
+            );
+        }
+    }
+
+    /// Неразрушимый блок не уничтожается, поэтому и счётчик выпадения не двигает: иначе бонусы
+    /// сыпались бы от ударов, которые ничего не разбили.
+    #[test]
+    fn hitting_an_indestructible_brick_does_not_count_towards_a_bonus() {
+        let mut game = Game::new(field());
+
+        for _ in 0..4 {
+            break_one_brick(&mut game, BrickKind::Indestructible);
+        }
+
+        assert!(
+            game.bonuses.is_empty(),
+            "удары по неразрушимому блоку уронили бонус: {} штук",
+            game.bonuses.len()
+        );
+    }
+
+    /// Потеря жизни, новый уровень и полный рестарт одинаково откатывают игру назад, поэтому и
+    /// бонусы они снимают одинаково: и падающие, и уже пойманный эффект, и счётчик до следующего.
+    #[test]
+    fn a_setback_clears_the_bonuses_and_their_effect() {
+        let mut after_a_lost_life = game_with_bonuses_in_play();
+        after_a_lost_life.state = GameState::Playing;
+        after_a_lost_life.ball.y = after_a_lost_life.field.height + 1.0;
+        after_a_lost_life.ball.velocity_x = 0.0;
+        after_a_lost_life.ball.velocity_y = 0.0;
+        after_a_lost_life.update(STILL, FRAME);
+        assert_bonuses_gone(&after_a_lost_life, "потеря жизни");
+
+        let mut after_a_level = game_with_bonuses_in_play();
+        after_a_level.state = GameState::LevelCompleted;
+        after_a_level.start_round();
+        assert_bonuses_gone(&after_a_level, "переход на уровень");
+
+        let mut after_a_restart = game_with_bonuses_in_play();
+        after_a_restart.restart();
+        assert_bonuses_gone(&after_a_restart, "полный рестарт");
+    }
+
+    /// Игра с бонусом в воздухе, пойманным эффектом и счётчиком, доведённым почти до следующего
+    /// выпадения: перелом обязан убрать все три следа сразу.
+    fn game_with_bonuses_in_play() -> Game {
+        let mut game = Game::new(field());
+        game.bonuses.push(Bonus::dropped_at(100.0, 100.0));
+        game.paddle.widen();
+        game.destroyed_since_drop = 3;
+        game
+    }
+
+    fn assert_bonuses_gone(game: &Game, setback: &str) {
+        assert!(
+            game.bonuses.is_empty(),
+            "{} не убрала падающие бонусы: {} штук",
+            setback,
+            game.bonuses.len()
+        );
+        assert_eq!(
+            game.paddle.wide_time_left, 0.0,
+            "{} не сняла эффект расширения: осталось {}",
+            setback, game.paddle.wide_time_left
+        );
+        assert_eq!(
+            game.destroyed_since_drop, 0,
+            "{} не сбросила счётчик выпадения: {}",
+            setback, game.destroyed_since_drop
+        );
     }
 }

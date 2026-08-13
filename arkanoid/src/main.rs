@@ -1,6 +1,7 @@
 use macroquad::prelude::*;
 
 mod ball;
+mod bonus;
 mod brick;
 mod game;
 mod level;
@@ -8,6 +9,7 @@ mod paddle;
 mod score;
 
 use ball::Ball;
+use bonus::Bonus;
 use brick::{Brick, BrickKind};
 use game::Game;
 use paddle::Paddle;
@@ -22,6 +24,8 @@ const NORMAL_BRICK_COLOR: Color = Color::new(0.35, 0.62, 0.86, 1.0);
 const STRONG_BRICK_COLOR: Color = Color::new(0.90, 0.65, 0.25, 1.0);
 const DAMAGED_BRICK_COLOR: Color = Color::new(0.55, 0.40, 0.18, 1.0);
 const INDESTRUCTIBLE_BRICK_COLOR: Color = Color::new(0.45, 0.47, 0.52, 1.0);
+/// Бонус выделен собственным цветом: игрок должен отличать его от блока с первого взгляда.
+const BONUS_COLOR: Color = Color::new(0.42, 0.83, 0.45, 1.0);
 
 const BORDER_THICKNESS: f32 = 6.0;
 
@@ -92,6 +96,7 @@ async fn main() {
         draw_bricks(&game.bricks);
         draw_paddle(&game.paddle);
         draw_ball(&game.ball);
+        draw_bonuses(&game.bonuses);
         draw_score(&game.score);
 
         // 6. Следующий кадр.
@@ -151,6 +156,13 @@ fn brick_color(brick: &Brick) -> Color {
         BrickKind::Strong if brick.hits_left > 1 => STRONG_BRICK_COLOR,
         BrickKind::Strong => DAMAGED_BRICK_COLOR,
         BrickKind::Indestructible => INDESTRUCTIBLE_BRICK_COLOR,
+    }
+}
+
+/// Падающие бонусы. Пойманный или упущенный бонус уже удалён из коллекции, поэтому рисовать нечего.
+fn draw_bonuses(bonuses: &[Bonus]) {
+    for bonus in bonuses {
+        draw_rectangle(bonus.x, bonus.y, bonus.width, bonus.height, BONUS_COLOR);
     }
 }
 

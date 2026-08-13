@@ -162,6 +162,7 @@ mod tests {
             width: 100.0,
             height: 16.0,
             speed: 200.0,
+            wide_time_left: 0.0,
         }
     }
 

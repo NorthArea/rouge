@@ -14,6 +14,9 @@ const HEIGHT: f32 = 16.0;
 const SPEED: f32 = 520.0;
 /// Отступ ракетки от нижней границы поля.
 const BOTTOM_MARGIN: f32 = 40.0;
+/// Ширина расширенной ракетки и время, на которое её даёт пойманный бонус.
+const WIDE_WIDTH: f32 = 190.0;
+const WIDE_DURATION: f32 = 8.0;
 
 /// Ракетка игрока. Позиция — левый верхний угол прямоугольника, как и во всей отрисовке Macroquad.
 pub struct Paddle {
@@ -22,6 +25,9 @@ pub struct Paddle {
     pub width: f32,
     pub height: f32,
     pub speed: f32,
+    /// Сколько секунд ракетка ещё остаётся расширенной. Ноль означает обычную ширину: отдельного
+    /// признака «бонус активен» нет, потому что он повторял бы это же число.
+    pub wide_time_left: f32,
 }
 
 impl Paddle {
@@ -34,17 +40,50 @@ impl Paddle {
             width: WIDTH,
             height: HEIGHT,
             speed: SPEED,
+            wide_time_left: 0.0,
         }
     }
 
     /// Обновление положения за один кадр. Размеры поля и delta time приходят аргументами, поэтому
     /// вычисление ни к чему не обращается снаружи и вызывается из теста без окна и без Macroquad.
     pub fn update(&mut self, direction: f32, field: Field, delta_time: f32) {
+        // Расширение временное, и его срок идёт по игровому времени, а не по числу кадров.
+        if self.wide_time_left > 0.0 {
+            self.wide_time_left -= delta_time;
+
+            if self.wide_time_left <= 0.0 {
+                self.narrow();
+            }
+        }
+
         let moved = self.x + direction * self.speed * delta_time;
 
         // Правая граница ограничивает правый край ракетки, а `x` — её левый, поэтому из ширины поля
         // вычитается ширина ракетки.
         self.x = moved.clamp(0.0, field.width - self.width);
+    }
+
+    /// Пойманный бонус расширяет ракетку на заданное время. Повторная поимка не складывает время,
+    /// а отсчитывает его заново — так эффект остаётся ограниченным сверху.
+    pub fn widen(&mut self) {
+        self.width = WIDE_WIDTH;
+        self.wide_time_left = WIDE_DURATION;
+    }
+
+    /// Снятие эффекта: ракетка возвращается к обычной ширине. Вызывается и по истечении времени, и
+    /// когда игру откатывает назад — потеря жизни, новый уровень, полный рестарт.
+    pub fn narrow(&mut self) {
+        self.width = WIDTH;
+        self.wide_time_left = 0.0;
+    }
+
+    /// Пересечение ракетки с любым другим прямоугольником (AABB). Та же проверка, что у мяча, и это
+    /// намеренное повторение: общая функция на восемь аргументов читалась бы хуже двух коротких.
+    pub fn overlaps(&self, x: f32, y: f32, width: f32, height: f32) -> bool {
+        self.x < x + width
+            && self.x + self.width > x
+            && self.y < y + height
+            && self.y + self.height > y
     }
 }
 
@@ -69,6 +108,7 @@ mod tests {
             width: 100.0,
             height: 16.0,
             speed: 200.0,
+            wide_time_left: 0.0,
         }
     }
 
@@ -136,6 +176,45 @@ mod tests {
             (pressed_right.x - 860.0).abs() < TOLERANCE,
             "ракетка ушла за правую границу: x = {}, ожидалось 860",
             pressed_right.x
+        );
+    }
+
+    #[test]
+    fn the_widening_expires_and_returns_the_paddle_to_its_normal_width() {
+        let mut widened = paddle();
+
+        widened.widen();
+        let while_wide = widened.width;
+        // Заведомо дольше, чем длится эффект: время считается из продакшн-константы, а не из копии.
+        widened.update(STILL, field(), WIDE_DURATION + 1.0);
+
+        assert_eq!(
+            while_wide, WIDE_WIDTH,
+            "бонус не расширил ракетку: ширина {}",
+            while_wide
+        );
+        assert_eq!(
+            widened.width, WIDTH,
+            "ширина не вернулась к исходной: {}, ожидалось {}",
+            widened.width, WIDTH
+        );
+    }
+
+    /// Расширение меняет ширину, а не правило: правая граница по-прежнему ограничивает правый край
+    /// ракетки, а не левый.
+    #[test]
+    fn a_widened_paddle_stays_inside_the_field() {
+        let mut widened = paddle();
+        widened.widen();
+
+        for _ in 0..180 {
+            widened.update(RIGHT, field(), 1.0 / 60.0);
+        }
+
+        assert!(
+            widened.x + widened.width <= field().width + TOLERANCE,
+            "расширенная ракетка вышла за правую границу: правый край = {}",
+            widened.x + widened.width
         );
     }
 }
