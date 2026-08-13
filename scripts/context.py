@@ -95,6 +95,29 @@ def hook_errors(root: Path) -> list[str]:
     return errors
 
 
+PROJECT_STATUSES = ("IN_PROGRESS", "BLOCKED", "COMPLETE")
+
+
+def project_status_errors(status: str | None, current: str | None, next_task: str | None) -> list[str]:
+    """Check PROJECT_STATUS against the pointer it describes.
+
+    COMPLETE says the repository has finished what it set out to build. That is a claim about the
+    whole project rather than about one task, so it is only allowed to stand when nothing is in
+    flight and nothing is queued — otherwise a finished-looking pointer would hide open work.
+    """
+    if status not in PROJECT_STATUSES:
+        return [f"PROJECT_STATUS must be one of {', '.join(PROJECT_STATUSES)}"]
+    if status != "COMPLETE":
+        return []
+
+    errors = []
+    if current and current != "none":
+        errors.append(f"PROJECT_STATUS COMPLETE while CURRENT_TASK is {current}")
+    if next_task and next_task != "none":
+        errors.append(f"PROJECT_STATUS COMPLETE while NEXT_BACKLOG_ID is {next_task}")
+    return errors
+
+
 def check(root: Path) -> int:
     missing = [path for path in REQUIRED if not (root / path).is_file()]
     if missing:
@@ -133,6 +156,7 @@ def check(root: Path) -> int:
         if status not in {"IN_PROGRESS", "DONE", "BLOCKED"}
     ]
     errors.extend(f"invalid registry status {item}" for item in invalid_statuses)
+    errors.extend(project_status_errors(values["PROJECT_STATUS"], current, next_task))
     errors.extend(hook_errors(root))
 
     if errors:

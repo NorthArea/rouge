@@ -208,6 +208,23 @@ class BoundaryHookTests(unittest.TestCase):
         self.assertIsNone(boundary.check_command(self.ROOTS, "echo https://example.com/home/x"))
 
 
+class ProjectStatusTests(unittest.TestCase):
+    """PROJECT_STATUS must describe the pointer it sits above, not drift away from it."""
+
+    def test_the_working_statuses_are_accepted(self) -> None:
+        self.assertEqual(context.project_status_errors("IN_PROGRESS", "T-AREA-1", "T-AREA-2"), [])
+        self.assertEqual(context.project_status_errors("BLOCKED", "T-AREA-1", "T-AREA-2"), [])
+
+    def test_an_unknown_status_is_rejected(self) -> None:
+        self.assertNotEqual(context.project_status_errors("FINISHED", "none", "none"), [])
+
+    def test_complete_requires_an_empty_queue_and_no_active_task(self) -> None:
+        """COMPLETE is a claim about the whole repository, so it has to be earned."""
+        self.assertEqual(context.project_status_errors("COMPLETE", "none", "none"), [])
+        self.assertNotEqual(context.project_status_errors("COMPLETE", "T-AREA-1", "none"), [])
+        self.assertNotEqual(context.project_status_errors("COMPLETE", "none", "T-AREA-2"), [])
+
+
 class SessionContextTests(unittest.TestCase):
     def test_summary_reports_every_pointer_field(self) -> None:
         summary = session.summary(ROOT)

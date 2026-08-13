@@ -49,7 +49,7 @@ Every task has exactly one identifier supplied by the backlog, for example `T-AR
 
 | Field | Meaning |
 |---|---|
-| `PROJECT_STATUS` | `IN_PROGRESS` or `BLOCKED` for the repository. |
+| `PROJECT_STATUS` | `IN_PROGRESS`, `BLOCKED` or `COMPLETE` for the repository. `COMPLETE` says the repository has finished what it set out to build, so `make context-check` only lets it stand while `CURRENT_TASK` and `NEXT_BACKLOG_ID` are both `none`. A finished project is not a broken one: do not invent a task to make the pointer look busy. |
 | `CURRENT_TASK` | Active `<TASK_ID>` or `none`; `none` never means invent a task. |
 | `NEXT_BACKLOG_ID` | Task to pick when `CURRENT_TASK: none`; it must exist in the queue, or be `none` when the queue is empty. |
 | `LAST_COMPLETED_TASK` | Last task marked `DONE`. |
