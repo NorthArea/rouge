@@ -9,7 +9,7 @@ CURRENT_TASK: T-MENU-2
 NEXT_BACKLOG_ID: T-MENU-2
 LAST_COMPLETED_TASK: T-MENU-1
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 5652fdd/T-MENU-1
+LAST_CHECKPOINT: 2778cdd/T-MENU-2
 NEXT_ACTION: `T-MENU-2` доведена до зелёного `make check` и закоммичена, но остановлена на специальном gate по решению из карточки — задача НЕ отмечена DONE. Владелец должен запустить одну команду (см. отчёт агента за то, какая именно — `cargo run` или `cargo run -p menu`) и пройти чек-лист из 7 пунктов из `workflow/backlog.md` (T-MENU-2), включая явную проверку ловушки кадра возврата (`Esc` в игре открывает меню, а не закрывает программу). После ответа владельца — доработать по замечаниям либо закрыть задачу: обновить реестр на DONE, удалить запись из backlog.md, удалить карточку `workflow/tasks/T-MENU-2-menu-crate.md`, второй checkpoint-коммит не нужен (уже сделан на этой сессии) — коммит закрытия будет отдельным.
 
 ## Реестр статусов задач
