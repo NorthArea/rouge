@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-8
 LAST_COMPLETED_TASK: T-ARK-7
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 26d1d96/T-ARK-6
+LAST_CHECKPOINT: 5f7eae9/T-ARK-7
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-8 (три уровня Arkanoid в коде, завершение уровня, переход между уровнями, `LevelCompleted`, `GameWon`, полный рестарт по `R`). Зависимости `T-ARK-6` и `T-ARK-7` выполнены: типы блоков, `Game`, жизни и четыре состояния существуют и покрыты тестами. Специального gate у позиции нет.
 
 ## Реестр статусов задач
