@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-MENU-1
 LAST_COMPLETED_TASK: T-ARK-12
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: <pending>/T-ARK-12
+LAST_CHECKPOINT: 27797f0/T-ARK-12
 NEXT_ACTION: Взять `T-MENU-1` — точку входа `pub async fn run()` для обеих игр (`pong/src/lib.rs`, `arkanoid/src/lib.rs`), по описанию позиции 1 в `workflow/backlog.md`; зависимостей нет, Arkanoid принята.
 
 ## Реестр статусов задач
