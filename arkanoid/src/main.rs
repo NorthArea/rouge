@@ -6,14 +6,19 @@ mod paddle;
 mod score;
 
 use ball::Ball;
-use brick::Brick;
+use brick::{Brick, BrickKind};
 use paddle::Paddle;
 use score::Score;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
 const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
 const FIELD_COLOR: Color = Color::new(0.88, 0.89, 0.93, 1.0);
-const BRICK_COLOR: Color = Color::new(0.35, 0.62, 0.86, 1.0);
+/// Цвет блока показывает его тип, а повреждённый прочный блок отличается от целого: различие живёт
+/// в данных блока, поэтому цвет — лишь его отображение.
+const NORMAL_BRICK_COLOR: Color = Color::new(0.35, 0.62, 0.86, 1.0);
+const STRONG_BRICK_COLOR: Color = Color::new(0.90, 0.65, 0.25, 1.0);
+const DAMAGED_BRICK_COLOR: Color = Color::new(0.55, 0.40, 0.18, 1.0);
+const INDESTRUCTIBLE_BRICK_COLOR: Color = Color::new(0.45, 0.47, 0.52, 1.0);
 
 const BORDER_THICKNESS: f32 = 6.0;
 
@@ -124,8 +129,25 @@ fn draw_ball(ball: &Ball) {
 
 /// Уничтоженный блок не рисуется: он выбыл из игры целиком, а не только из проверки столкновений.
 fn draw_bricks(bricks: &[Brick]) {
-    for brick in bricks.iter().filter(|brick| !brick.destroyed) {
-        draw_rectangle(brick.x, brick.y, brick.width, brick.height, BRICK_COLOR);
+    for brick in bricks.iter().filter(|brick| !brick.destroyed()) {
+        draw_rectangle(
+            brick.x,
+            brick.y,
+            brick.width,
+            brick.height,
+            brick_color(brick),
+        );
+    }
+}
+
+/// Цвет выводится из данных блока: тип и оставшаяся прочность. Повреждённый прочный блок темнее
+/// целого, поэтому игрок видит, что удар засчитан.
+fn brick_color(brick: &Brick) -> Color {
+    match brick.kind {
+        BrickKind::Normal => NORMAL_BRICK_COLOR,
+        BrickKind::Strong if brick.hits_left > 1 => STRONG_BRICK_COLOR,
+        BrickKind::Strong => DAMAGED_BRICK_COLOR,
+        BrickKind::Indestructible => INDESTRUCTIBLE_BRICK_COLOR,
     }
 }
 

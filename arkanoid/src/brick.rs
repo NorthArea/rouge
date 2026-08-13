@@ -2,9 +2,6 @@ use crate::ball::Ball;
 use crate::score::Score;
 use crate::Field;
 
-/// Очки за уничтоженный блок.
-const POINTS: u32 = 100;
-
 /// Раскладка блоков задана прямо в коде: ни внешнего редактора, ни загрузки из файлов. Пока раскладка
 /// одна — сетка из рядов и столбцов под верхней границей поля.
 const ROWS: u32 = 5;
@@ -15,6 +12,39 @@ const GAP: f32 = 6.0;
 const SIDE_MARGIN: f32 = 40.0;
 const TOP_MARGIN: f32 = 60.0;
 
+/// Тип блока. Обычный `enum` и ничего больше: типов три, они отличаются прочностью и очками, и
+/// никакой иерархии для этого не нужно (D-02).
+#[derive(Clone, Copy, PartialEq)]
+pub enum BrickKind {
+    /// Разрушается с одного попадания.
+    Normal,
+    /// Выдерживает одно попадание и разрушается со второго.
+    Strong,
+    /// Отражает мяч, но не разрушается никогда.
+    Indestructible,
+}
+
+impl BrickKind {
+    /// Сколько попаданий блок выдерживает. У неразрушимого прочность не расходуется, поэтому её
+    /// значение для него ни на что не влияет.
+    /// Очки за уничтожение блока этого типа. Неразрушимый блок уничтожить нельзя, поэтому очков он
+    /// не приносит никогда.
+    fn points(self) -> u32 {
+        match self {
+            BrickKind::Normal => 100,
+            BrickKind::Strong => 200,
+            BrickKind::Indestructible => 0,
+        }
+    }
+
+    fn strength(self) -> u32 {
+        match self {
+            BrickKind::Normal | BrickKind::Indestructible => 1,
+            BrickKind::Strong => 2,
+        }
+    }
+}
+
 /// Блок игрового поля. Позиция — левый верхний угол прямоугольника, как и во всей отрисовке
 /// Macroquad. Уничтоженный блок остаётся в коллекции, но выбывает из игры: так жизненный цикл
 /// игрового объекта виден в одном месте и не требует перестройки коллекции посреди кадра.
@@ -23,7 +53,29 @@ pub struct Brick {
     pub y: f32,
     pub width: f32,
     pub height: f32,
-    pub destroyed: bool,
+    pub kind: BrickKind,
+    /// Сколько попаданий блок ещё выдержит. Повреждённый блок отличается от целого этим числом, и
+    /// из него же выводится цвет при отрисовке — так различие остаётся проверяемым тестом.
+    pub hits_left: u32,
+}
+
+impl Brick {
+    pub fn new(x: f32, y: f32, width: f32, height: f32, kind: BrickKind) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+            kind,
+            hits_left: kind.strength(),
+        }
+    }
+
+    /// Блок уничтожен, когда прочность израсходована. Признак не хранится отдельно: два поля об
+    /// одном и том же разошлись бы.
+    pub fn destroyed(&self) -> bool {
+        self.hits_left == 0
+    }
 }
 
 /// Раскладка блоков для поля: сетка `ROWS` × `COLUMNS`, растянутая по ширине поля. Ширина блока
@@ -35,17 +87,29 @@ pub fn layout(field: Field) -> Vec<Brick> {
     let mut bricks = Vec::new();
     for row in 0..ROWS {
         for column in 0..COLUMNS {
-            bricks.push(Brick {
-                x: SIDE_MARGIN + column as f32 * (width + GAP),
-                y: TOP_MARGIN + row as f32 * (HEIGHT + GAP),
+            bricks.push(Brick::new(
+                SIDE_MARGIN + column as f32 * (width + GAP),
+                TOP_MARGIN + row as f32 * (HEIGHT + GAP),
                 width,
-                height: HEIGHT,
-                destroyed: false,
-            });
+                HEIGHT,
+                kind_at(row, column),
+            ));
         }
     }
 
     bricks
+}
+
+/// Тип блока по его месту в сетке. Раскладка задана прямо в коде, как и вся конфигурация уровней:
+/// верхний ряд прочный, по краям среднего ряда стоят неразрушимые блоки, остальное — обычные.
+fn kind_at(row: u32, column: u32) -> BrickKind {
+    if row == 0 {
+        BrickKind::Strong
+    } else if row == 2 && (column == 0 || column == COLUMNS - 1) {
+        BrickKind::Indestructible
+    } else {
+        BrickKind::Normal
+    }
 }
 
 /// Столкновение мяча с коллекцией блоков за один кадр.
@@ -53,12 +117,20 @@ pub fn bounce_off_bricks(ball: &mut Ball, bricks: &mut [Brick], score: &mut Scor
     for brick in bricks {
         // Уничтоженный блок выбывает из игры целиком: он не сталкивается, не приносит очки и не
         // рисуется. Это и есть жизненный цикл игрового объекта в этой игре.
-        if brick.destroyed || !ball.overlaps(brick.x, brick.y, brick.width, brick.height) {
+        if brick.destroyed() || !ball.overlaps(brick.x, brick.y, brick.width, brick.height) {
             continue;
         }
 
-        brick.destroyed = true;
-        score.points += POINTS;
+        // Неразрушимый блок урона не накапливает, но остаётся стеной: отскок ниже общий для всех
+        // типов, потому что для мяча любой блок — просто прямоугольник.
+        if brick.kind != BrickKind::Indestructible {
+            brick.hits_left -= 1;
+
+            // Очки приносит только уничтожение: повреждённый блок ещё в игре и ещё ничего не стоит.
+            if brick.destroyed() {
+                score.points += brick.kind.points();
+            }
+        }
         flip_entry_axis(ball, brick);
 
         // За кадр мяч отскакивает не более одного раза: на стыке двух блоков второй отскок вернул бы
@@ -90,13 +162,7 @@ mod tests {
     /// Блок теста намеренно с круглыми размерами: он занимает 300..380 по горизонтали и 100..124 по
     /// вертикали.
     fn brick() -> Brick {
-        Brick {
-            x: 300.0,
-            y: 100.0,
-            width: 80.0,
-            height: 24.0,
-            destroyed: false,
-        }
+        Brick::new(300.0, 100.0, 80.0, 24.0, BrickKind::Normal)
     }
 
     /// Мяч, подошедший к блоку снизу: он занимает 330..350 по горизонтали (целиком в пределах блока)
@@ -121,9 +187,9 @@ mod tests {
         bounce_off_bricks(&mut ball, &mut bricks, &mut score);
 
         assert!(
-            bricks[0].destroyed,
-            "попадание не уничтожило блок: destroyed = {}",
-            bricks[0].destroyed
+            bricks[0].destroyed(),
+            "попадание не уничтожило блок: осталось прочности {}",
+            bricks[0].hits_left
         );
     }
 
@@ -141,7 +207,10 @@ mod tests {
 
         bounce_off_bricks(&mut ball, &mut bricks, &mut score);
 
-        assert!(!bricks[0].destroyed, "кадр без столкновения уничтожил блок");
+        assert!(
+            !bricks[0].destroyed(),
+            "кадр без столкновения уничтожил блок"
+        );
         assert!(
             (ball.velocity_y + 300.0).abs() < TOLERANCE && ball.velocity_x.abs() < TOLERANCE,
             "кадр без столкновения изменил скорость: velocity = ({}, {}), ожидалось (0, -300)",
@@ -288,9 +357,130 @@ mod tests {
             ball.velocity_y
         );
         assert_eq!(
-            bricks.iter().filter(|brick| brick.destroyed).count(),
+            bricks.iter().filter(|brick| brick.destroyed()).count(),
             1,
             "кадр уничтожил больше одного блока"
+        );
+    }
+
+    #[test]
+    fn a_strong_brick_survives_the_first_hit() {
+        let mut ball = hitting_from_below();
+        let mut bricks = vec![Brick::new(300.0, 100.0, 80.0, 24.0, BrickKind::Strong)];
+        let mut score = Score::default();
+
+        bounce_off_bricks(&mut ball, &mut bricks, &mut score);
+
+        assert!(
+            !bricks[0].destroyed(),
+            "первое попадание уничтожило прочный блок"
+        );
+        // Повреждение выражено данными блока, а не отдельным признаком: прочности стало меньше.
+        assert_eq!(
+            bricks[0].hits_left, 1,
+            "первое попадание не повредило прочный блок: осталось прочности {}, ожидалось 1",
+            bricks[0].hits_left
+        );
+        assert_eq!(
+            score.points, 0,
+            "повреждение прочного блока начислило очки: {}",
+            score.points
+        );
+    }
+
+    #[test]
+    fn a_second_hit_destroys_the_strong_brick_and_scores_two_hundred() {
+        let mut bricks = vec![Brick::new(300.0, 100.0, 80.0, 24.0, BrickKind::Strong)];
+        let mut score = Score::default();
+
+        for _ in 0..2 {
+            let mut ball = hitting_from_below();
+            bounce_off_bricks(&mut ball, &mut bricks, &mut score);
+        }
+
+        assert!(
+            bricks[0].destroyed(),
+            "второе попадание не уничтожило прочный блок: осталось прочности {}",
+            bricks[0].hits_left
+        );
+        assert_eq!(
+            score.points, 200,
+            "уничтоженный прочный блок принёс {} очков, ожидалось 200",
+            score.points
+        );
+    }
+
+    #[test]
+    fn an_indestructible_brick_never_breaks_and_never_scores() {
+        let mut bricks = vec![Brick::new(
+            300.0,
+            100.0,
+            80.0,
+            24.0,
+            BrickKind::Indestructible,
+        )];
+        let mut score = Score::default();
+
+        // Многократные попадания, а не одно: неразрушимость — это отсутствие накопления урона.
+        for hit in 1..=5 {
+            let mut ball = hitting_from_below();
+            bounce_off_bricks(&mut ball, &mut bricks, &mut score);
+
+            assert!(
+                !bricks[0].destroyed(),
+                "попадание {} уничтожило неразрушимый блок",
+                hit
+            );
+        }
+
+        assert_eq!(
+            score.points, 0,
+            "неразрушимый блок принёс очки: {}",
+            score.points
+        );
+    }
+
+    /// Неразрушимый блок не исчезает, но стеной для мяча остаётся: пролетающий сквозь него мяч
+    /// сделал бы такие блоки невидимыми для игры.
+    #[test]
+    fn an_indestructible_brick_bounces_the_ball_like_any_other() {
+        let mut ball = hitting_from_below();
+        let mut bricks = vec![Brick::new(
+            300.0,
+            100.0,
+            80.0,
+            24.0,
+            BrickKind::Indestructible,
+        )];
+        let mut score = Score::default();
+
+        bounce_off_bricks(&mut ball, &mut bricks, &mut score);
+
+        assert!(
+            (ball.velocity_y - 300.0).abs() < TOLERANCE,
+            "неразрушимый блок не отразил мяч: velocity_y = {}, ожидалось 300",
+            ball.velocity_y
+        );
+    }
+
+    /// Регрессия к `T-ARK-5`: появление типов не должно было изменить обычный блок.
+    #[test]
+    fn a_normal_brick_is_still_destroyed_by_one_hit_and_scores_one_hundred() {
+        let mut ball = hitting_from_below();
+        let mut bricks = vec![Brick::new(300.0, 100.0, 80.0, 24.0, BrickKind::Normal)];
+        let mut score = Score::default();
+
+        bounce_off_bricks(&mut ball, &mut bricks, &mut score);
+
+        assert!(
+            bricks[0].destroyed(),
+            "обычный блок пережил попадание: осталось прочности {}",
+            bricks[0].hits_left
+        );
+        assert_eq!(
+            score.points, 100,
+            "обычный блок принёс {} очков, ожидалось 100",
+            score.points
         );
     }
 }
