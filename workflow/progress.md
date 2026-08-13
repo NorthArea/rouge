@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-6
 LAST_COMPLETED_TASK: T-ARK-5
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 9dff540/T-ARK-4
+LAST_CHECKPOINT: 1065683/T-ARK-5
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-6 (типы блоков `Normal` / `Strong` / `Indestructible` в Arkanoid, повреждение `Strong`, неразрушимость `Indestructible`, очки по типу блока). Зависимость `T-ARK-5` выполнена: `Vec<Brick>`, столкновение со счётом и жизненный цикл блока существуют и покрыты тестами. Специального gate у позиции нет.
 
 ## Реестр статусов задач
