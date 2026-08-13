@@ -1,7 +1,9 @@
 use macroquad::prelude::*;
 
+mod ball;
 mod paddle;
 
+use ball::Ball;
 use paddle::Paddle;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
@@ -40,11 +42,11 @@ async fn main() {
     // Macroquad в каждом кадре.
     let field = Field::new(screen_width(), screen_height());
     let mut player = Paddle::new(field);
+    let mut ball = Ball::new(field);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
-        // того, что этот проект показывает. Стадия 4 пока пуста — сталкивать ракетку не с чем,
-        // пока в игре нет мяча, — но она названа здесь, чтобы каркас кадра был виден целиком.
+        // того, что этот проект показывает.
 
         // 1. Чтение ввода.
         if is_key_pressed(KeyCode::Escape) {
@@ -57,12 +59,16 @@ async fn main() {
 
         // 3. Обновление состояния.
         player.update(direction, field, delta_time);
+        ball.update(delta_time);
 
-        // 4. Проверка столкновений.
+        // 4. Проверка столкновений. Пока это только стены: нижней стены у поля нет, поэтому мяч,
+        //    ушедший вниз, не возвращается — это временный тупик до появления жизней.
+        ball.bounce_off_walls(field);
 
         // 5. Рендеринг.
         draw_field(field);
         draw_paddle(&player);
+        draw_ball(&ball);
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -92,6 +98,12 @@ fn draw_field(field: Field) {
 /// контрастное, один цвет на всё, кроме фона.
 fn draw_paddle(paddle: &Paddle) {
     draw_rectangle(paddle.x, paddle.y, paddle.width, paddle.height, FIELD_COLOR);
+}
+
+/// Мяч рисуется квадратом, а не кругом: так изображение совпадает с прямоугольником, по которому
+/// считаются столкновения.
+fn draw_ball(ball: &Ball) {
+    draw_rectangle(ball.x, ball.y, ball.size, ball.size, FIELD_COLOR);
 }
 
 /// `draw_rectangle_lines` рисует рамку по центру контура, поэтому её внешняя половина ушла бы
