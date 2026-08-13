@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-3
 LAST_COMPLETED_TASK: T-ARK-2
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 3dcb2d0/T-ARK-1
+LAST_CHECKPOINT: d372b47/T-ARK-2
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-3 (мяч Arkanoid: позиция, вектор скорости, движение через delta time, отражение от левой, правой и верхней границ, отрисовка). Зависимостей у позиции нет. Специального gate у позиции нет.
 
 ## Реестр статусов задач
