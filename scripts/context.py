@@ -50,7 +50,21 @@ def field(text: str, name: str) -> str | None:
 
 
 def queue_ids(text: str) -> set[str]:
-    return set(re.findall(r"`(T-[A-Z]+-\d+)`", text))
+    """Task IDs that are actually queued, read from the queue table's own column.
+
+    The backlog names task IDs outside the queue too — in the paragraph explaining what has already
+    been delivered, in the dependencies of other positions, in the descriptions below the table. Only
+    the second column of a numbered table row is an open position; counting the rest would keep a
+    finished project's queue looking full because its closing paragraph mentions what it finished.
+    """
+    ids: set[str] = set()
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            continue
+        columns = [column.strip() for column in line.strip("|").split("|")]
+        if len(columns) >= 2 and columns[0].isdigit():
+            ids.update(re.findall(r"`(T-[A-Z]+-\d+)`", columns[1]))
+    return ids
 
 
 def registry_rows(text: str) -> list[tuple[str, str]]:

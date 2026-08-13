@@ -240,6 +240,37 @@ class ProjectStatusTests(unittest.TestCase):
         self.assertNotEqual(context.project_status_errors("COMPLETE", "none", "T-AREA-2"), [])
 
 
+class QueueParsingTests(unittest.TestCase):
+    """The queue is the table, not every mention of a task ID in the file."""
+
+    BACKLOG = """# Открытый backlog
+
+Очередь Pong (`T-PONG-1` … `T-PONG-8`) закрыта, приёмка пройдена.
+
+| Position | IDs | Scope | Depends on | Gate |
+|---|---|---|---|---|
+| 1 | `T-ARK-2` | Ракетка. | `T-ARK-1` | — |
+| 2 | `T-ARK-3`, `T-ARK-4` | Мяч и отскок. | — | — |
+
+### `T-ARK-2` — ракетка
+
+Описание позиции.
+"""
+
+    def test_only_the_queue_column_counts_as_open_work(self) -> None:
+        self.assertEqual(context.queue_ids(self.BACKLOG), {"T-ARK-2", "T-ARK-3", "T-ARK-4"})
+
+    def test_prose_about_finished_work_leaves_the_queue_empty(self) -> None:
+        closed = """# Открытый backlog
+
+Открытых позиций нет: обе игры и меню (`T-MENU-1`, `T-MENU-2`) приняты владельцем.
+
+| Position | IDs | Scope | Depends on | Gate |
+|---|---|---|---|---|
+"""
+        self.assertEqual(context.queue_ids(closed), set())
+
+
 class SessionContextTests(unittest.TestCase):
     def test_summary_reports_every_pointer_field(self) -> None:
         summary = session.summary(ROOT)
