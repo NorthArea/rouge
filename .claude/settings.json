@@ -67,7 +67,6 @@
       "Bash(brew uninstall:*)",
       "Bash(pip install:*)",
       "Bash(git push:*)",
-      "Bash(git tag:*)",
       "Bash(git reset --hard:*)",
       "Bash(git clean:*)"
     ],

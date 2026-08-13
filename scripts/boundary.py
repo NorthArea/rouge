@@ -26,7 +26,13 @@ DESTRUCTIVE = (
     (re.compile(r"\bgit\s+reset\s+(?:\S+\s+)*--hard\b"), "git reset --hard needs an explicit owner decision"),
     (re.compile(r"\bgit\s+clean\b"), "git clean needs an explicit owner decision"),
     (re.compile(r"\bgit\s+push\s+(?:\S+\s+)*(?:--force\b|-f\b)"), "force-push needs an explicit owner decision"),
-    (re.compile(r"\bgit\s+tag\b"), "creating tags needs an explicit owner decision"),
+    # `git tag` both writes and reads: bare `git tag`, `-l`, `-n`, `--points-at` and friends only list
+    # what already exists. Deny the forms that bring a tag into being or take one away — the writing
+    # flags, and a first argument that is a tag name rather than an option.
+    (
+        re.compile(r"\bgit\s+tag\s+(?:-[asudfm]\b|--(?:annotate|sign|local-user|delete|force|message|file)\b|[^-\s|&;][^\s|&;]*)"),
+        "creating tags needs an explicit owner decision",
+    ),
 )
 PATH_FIELDS = ("file_path", "notebook_path", "path")
 

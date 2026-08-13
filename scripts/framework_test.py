@@ -199,9 +199,24 @@ class BoundaryHookTests(unittest.TestCase):
             "git clean -fd",
             "git push --force origin master",
             "git tag v1.0.0",
+            "git tag -a pong-1.0 cba2501 -m 'the accepted game'",
+            "git tag -d pong-1.0",
         ):
             with self.subTest(command=command):
                 self.assertIsNotNone(boundary.check_command(self.ROOTS, command))
+
+    def test_reading_tags_is_not_creating_them(self) -> None:
+        """The owner decides when a tag appears; looking at the ones that exist decides nothing."""
+        for command in (
+            "git tag",
+            "git tag -l",
+            "git tag --list 'pong-*'",
+            "git tag -n5",
+            "git tag --points-at HEAD",
+            "git tag --sort=-creatordate",
+        ):
+            with self.subTest(command=command):
+                self.assertIsNone(boundary.check_command(self.ROOTS, command))
 
     def test_urls_are_not_mistaken_for_host_paths(self) -> None:
         self.assertIsNone(boundary.check_command(self.ROOTS, "git remote -v"))
