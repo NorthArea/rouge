@@ -174,7 +174,10 @@ the repository root.
 - No tracked default may point outside the repository.
 - The `PreToolUse` boundary hook, the `deny` rules in `.claude/settings.json` and `make boundary-check`
   are enforcement mechanisms, not suggestions. A hook denial is a stop condition: report it, do not look
-  for a way around it.
+  for a way around it. The hook reads the text of a command and cannot tell a command from a sentence
+  about one, so quoting a guarded command inside a commit message or a report gets that write denied.
+  Describe the command in words instead of pasting it; rewriting the sentence is not a workaround,
+  moving the same text somewhere the scan does not look would be.
 
 ## Canonical Command Interface
 
@@ -278,7 +281,9 @@ the whole run and is never the default.
 stopped one cannot be resumed, and its reading, its verification and its half-finished reasoning are
 gone for good, so the work restarts from nothing. When a dispatch turns out to be wrong — wrong premise,
 changed decision, narrowed scope — send the correction as a message to the running agent instead. Stop
-one only to abandon its work outright.
+one only to abandon its work outright. The same holds for a charter edit: an agent already running
+keeps the definition it launched with, model included, so a change to `.claude/agents/` reaches the
+next launch, never the current one.
 
 **A dispatch carries the decisions, not the questions.** Before dispatching, the manager settles what
 the agent would otherwise stall on or reopen: which owner decisions already apply, which apparent stop
@@ -302,6 +307,10 @@ command that ran in the current session counts.
 - A test that passes the first time it runs proves nothing yet. Say so, then make it fail on purpose:
   mutate the production code it covers, watch that test go red while the others stay green, revert the
   mutation and verify the file came back byte for byte. Record the mutation and the revert.
+- The stub that makes a test compile is a signature, not behaviour. Writing the whole skeleton first —
+  the struct with its fields filled in, the call already wired into the frame — is how a test ends up
+  green on its first run: the behaviour arrived before the test that was supposed to demand it. The
+  mutation check that follows is a repair, and an honest red costs less than a repair.
 - Resolve uncertain APIs with the compiler and the repository's canonical build command.
 - Read back what an edit actually did before building on it. Text replacement matches substrings, so
   when the text being replaced is also the beginning of a longer line, the tail of that line survives
@@ -316,6 +325,11 @@ command that ran in the current session counts.
 - A file in the tree that you did not put there is a fact to report, not a mystery to solve. Say which
   file and that it is not yours, leave it exactly as it is, and stop. Whoever owns that zone knows what
   it is; a guess in a report reads as an established fact and sends the next reader the wrong way.
+- Every claim about the state of the repository comes from a command you ran in this session, not from
+  memory of how it looked earlier. "The tree still holds these files", "the queue is empty", "the tests
+  are the same ones" — each is a command away, and a report that names files the repository does not
+  have costs the reader more than the report saved. A file that vanished is not a mystery either:
+  `git log -- <path>` says who removed it and why, and that is one command, not an unknown.
 - Never delete an untracked file that carries the owner's own words. Commit it first, then delete it in
   a second commit: the deletion stays reversible and the record survives in history.
 
