@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-10
 LAST_COMPLETED_TASK: T-ARK-9
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 35d308d/T-ARK-8
+LAST_CHECKPOINT: c814fbe/T-ARK-9
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-10 (экранный UI Arkanoid: `Score`, `Lives`, `Level` и сообщения состояний `Press SPACE to start`, `LEVEL COMPLETED`, `GAME OVER`, `YOU WIN`). Зависимость `T-ARK-8` выполнена: уровни и все шесть состояний существуют. Специального gate у позиции нет.
 
 ## Реестр статусов задач
