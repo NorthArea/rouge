@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-2
 LAST_COMPLETED_TASK: T-ARK-1
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 45f683a/T-PONG-8
+LAST_CHECKPOINT: 3dcb2d0/T-ARK-1
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-2 (ракетка игрока Arkanoid: данные, горизонтальное движение через delta time, ограничение границами поля, управление `A`/`D` и `←`/`→`, отрисовка). Зависимость `T-ARK-1` выполнена: крейт `arkanoid` существует, собирается и входит в workspace. Специального gate у позиции нет.
 
 ## Реестр статусов задач
