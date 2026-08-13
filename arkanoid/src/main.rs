@@ -1,16 +1,26 @@
 use macroquad::prelude::*;
 
 mod ball;
+mod brick;
 mod paddle;
+mod score;
 
 use ball::Ball;
+use brick::Brick;
 use paddle::Paddle;
+use score::Score;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
 const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
 const FIELD_COLOR: Color = Color::new(0.88, 0.89, 0.93, 1.0);
+const BRICK_COLOR: Color = Color::new(0.35, 0.62, 0.86, 1.0);
 
 const BORDER_THICKNESS: f32 = 6.0;
+
+const SCORE_FONT_SIZE: u16 = 32;
+/// Отступ счёта от левой границы поля и высота его строки от верхней.
+const SCORE_MARGIN: f32 = 24.0;
+const SCORE_BASELINE: f32 = 40.0;
 
 /// Игровое поле. Размеры приходят значением из размеров окна, поэтому игровая логика не обращается
 /// к состоянию Macroquad и остаётся вызываемой сама по себе.
@@ -43,6 +53,8 @@ async fn main() {
     let field = Field::new(screen_width(), screen_height());
     let mut player = Paddle::new(field);
     let mut ball = Ball::new(field);
+    let mut bricks = brick::layout(field);
+    let mut score = Score::default();
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -61,15 +73,18 @@ async fn main() {
         player.update(direction, field, delta_time);
         ball.update(delta_time);
 
-        // 4. Проверка столкновений. Пока это стены и ракетка: нижней стены у поля нет, поэтому мяч,
-        //    ушедший вниз, не возвращается — это временный тупик до появления жизней.
+        // 4. Проверка столкновений. Пока это стены, ракетка и блоки: нижней стены у поля нет, поэтому
+        //    мяч, ушедший вниз, не возвращается — это временный тупик до появления жизней.
         ball.bounce_off_walls(field);
         ball.bounce_off_paddle(&player);
+        brick::bounce_off_bricks(&mut ball, &mut bricks, &mut score);
 
         // 5. Рендеринг.
         draw_field(field);
+        draw_bricks(&bricks);
         draw_paddle(&player);
         draw_ball(&ball);
+        draw_score(&score);
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -105,6 +120,26 @@ fn draw_paddle(paddle: &Paddle) {
 /// считаются столкновения.
 fn draw_ball(ball: &Ball) {
     draw_rectangle(ball.x, ball.y, ball.size, ball.size, FIELD_COLOR);
+}
+
+/// Уничтоженный блок не рисуется: он выбыл из игры целиком, а не только из проверки столкновений.
+fn draw_bricks(bricks: &[Brick]) {
+    for brick in bricks.iter().filter(|brick| !brick.destroyed) {
+        draw_rectangle(brick.x, brick.y, brick.width, brick.height, BRICK_COLOR);
+    }
+}
+
+/// Счёт — текст в левом верхнем углу поля.
+fn draw_score(score: &Score) {
+    let text = format!("SCORE {}", score.points);
+
+    draw_text(
+        &text,
+        SCORE_MARGIN,
+        SCORE_BASELINE,
+        f32::from(SCORE_FONT_SIZE),
+        FIELD_COLOR,
+    );
 }
 
 /// `draw_rectangle_lines` рисует рамку по центру контура, поэтому её внешняя половина ушла бы

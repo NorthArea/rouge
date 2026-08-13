@@ -71,7 +71,8 @@ impl Ball {
         // Одного пересечения для отскока мало: ракетка в Arkanoid одна и стоит внизу, поэтому мяч
         // отбивается только на пути вниз. Уже отбитый мяч, ещё не успевший выйти из ракетки, иначе
         // разворачивался бы в каждом кадре и залип бы в ней.
-        if !self.overlaps(paddle) || self.velocity_y <= 0.0 {
+        if !self.overlaps(paddle.x, paddle.y, paddle.width, paddle.height) || self.velocity_y <= 0.0
+        {
             return;
         }
 
@@ -98,14 +99,15 @@ impl Ball {
         ((ball_center - paddle_center) / (paddle.width / 2.0)).clamp(-1.0, 1.0)
     }
 
-    /// Пересечение двух прямоугольников (AABB), написанное вручную: physics engine в проекте нет.
-    /// Прямоугольники не пересекаются, если один целиком левее, правее, выше или ниже другого, —
-    /// значит пересекаются они тогда, когда неверно всё это сразу.
-    fn overlaps(&self, paddle: &Paddle) -> bool {
-        self.x < paddle.x + paddle.width
-            && self.x + self.size > paddle.x
-            && self.y < paddle.y + paddle.height
-            && self.y + self.size > paddle.y
+    /// Пересечение прямоугольника мяча с любым другим прямоугольником (AABB), написанное вручную:
+    /// physics engine в проекте нет. Прямоугольники не пересекаются, если один целиком левее, правее,
+    /// выше или ниже другого, — значит пересекаются они тогда, когда неверно всё это сразу. Ракетка и
+    /// блок проверяются одной и той же функцией: для столкновений оба — просто прямоугольники.
+    pub fn overlaps(&self, x: f32, y: f32, width: f32, height: f32) -> bool {
+        self.x < x + width
+            && self.x + self.size > x
+            && self.y < y + height
+            && self.y + self.size > y
     }
 }
 
