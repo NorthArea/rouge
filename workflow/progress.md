@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-11
 LAST_COMPLETED_TASK: T-ARK-10
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: c814fbe/T-ARK-9
+LAST_CHECKPOINT: 32ae4c0/T-ARK-10
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-11 (`arkanoid/README.md` по одиннадцати пунктам принятой идеи и обновление корневого указателя). Зависимость `T-ARK-10` выполнена: UI и сообщения состояний на экране. Специального gate у позиции нет.
 
 ## Реестр статусов задач
