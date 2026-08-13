@@ -67,6 +67,12 @@ this order and stop only once a step fails: immediate resume, then a 3-minute pa
 10-minute pause and resume, then report the interruption to the owner as an infrastructure incident
 rather than a task blocker.
 
+Resuming a subagent means sending it the state, not the word «continue». Read the repository first —
+`git log --oneline`, `git status --short`, the registry, the test command — and hand it what is
+actually true: which of its commits exist, what sits in the tree, what the last green command reported.
+An agent that has to re-derive where it stopped will re-derive it wrongly, and a drop between the file
+edits and the commits looks exactly like a finished task from the inside.
+
 ## First Session Steps
 
 Run from the repository root before inspecting or editing implementation code:
@@ -288,11 +294,19 @@ command that ran in the current session counts.
   mutate the production code it covers, watch that test go red while the others stay green, revert the
   mutation and verify the file came back byte for byte. Record the mutation and the revert.
 - Resolve uncertain APIs with the compiler and the repository's canonical build command.
+- Read back what an edit actually did before building on it. Text replacement matches substrings, so
+  when the text being replaced is also the beginning of a longer line, the tail of that line survives
+  and silently attaches itself to the replacement. The result still looks plausible, which is exactly
+  why it has to be looked at rather than assumed.
 - Run `make boundary-check` and `make context-check` before handing work to another agent.
 - Commit only after full verification; the commit message names the task ID.
 - Name every path when committing. `git mv`, `git rm` and `git add` leave changes staged, and a bare
   `git commit` sweeps the whole index into a message written for something else. Read
-  `git status --short` before each commit and stage explicitly.
+  `git status --short` before each commit and stage explicitly. An untracked path cannot be named to
+  `git commit` at all until `git add` has introduced it.
+- A file in the tree that you did not put there is a fact to report, not a mystery to solve. Say which
+  file and that it is not yours, leave it exactly as it is, and stop. Whoever owns that zone knows what
+  it is; a guess in a report reads as an established fact and sends the next reader the wrong way.
 - Never delete an untracked file that carries the owner's own words. Commit it first, then delete it in
   a second commit: the deletion stays reversible and the record survives in history.
 
