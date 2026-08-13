@@ -13,7 +13,6 @@ use bonus::Bonus;
 use brick::{Brick, BrickKind};
 use game::Game;
 use paddle::Paddle;
-use score::Score;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
 const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
@@ -29,10 +28,13 @@ const BONUS_COLOR: Color = Color::new(0.42, 0.83, 0.45, 1.0);
 
 const BORDER_THICKNESS: f32 = 6.0;
 
-const SCORE_FONT_SIZE: u16 = 32;
-/// Отступ счёта от левой границы поля и высота его строки от верхней.
-const SCORE_MARGIN: f32 = 24.0;
-const SCORE_BASELINE: f32 = 40.0;
+/// Строка состояния: счёт, жизни и номер уровня одной строкой над полем блоков.
+const STATUS_FONT_SIZE: u16 = 28;
+const STATUS_MARGIN: f32 = 24.0;
+const STATUS_BASELINE: f32 = 38.0;
+
+/// Сообщение состояния — крупная надпись по центру поля.
+const MESSAGE_FONT_SIZE: u16 = 44;
 
 /// Игровое поле. Размеры приходят значением из размеров окна, поэтому игровая логика не обращается
 /// к состоянию Macroquad и остаётся вызываемой сама по себе.
@@ -97,7 +99,8 @@ async fn main() {
         draw_paddle(&game.paddle);
         draw_ball(&game.ball);
         draw_bonuses(&game.bonuses);
-        draw_score(&game.score);
+        draw_status(&game);
+        draw_message(&game, field);
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -166,15 +169,37 @@ fn draw_bonuses(bonuses: &[Bonus]) {
     }
 }
 
-/// Счёт — текст в левом верхнем углу поля.
-fn draw_score(score: &Score) {
-    let text = format!("SCORE {}", score.points);
+/// Счёт, жизни и уровень — одна строка в левом верхнем углу поля.
+fn draw_status(game: &Game) {
+    let text = format!(
+        "SCORE {}    LIVES {}    LEVEL {}",
+        game.score.points, game.lives, game.level
+    );
 
     draw_text(
         &text,
-        SCORE_MARGIN,
-        SCORE_BASELINE,
-        f32::from(SCORE_FONT_SIZE),
+        STATUS_MARGIN,
+        STATUS_BASELINE,
+        f32::from(STATUS_FONT_SIZE),
+        FIELD_COLOR,
+    );
+}
+
+/// Сообщение текущего состояния по центру поля. В идущем раунде сообщения нет, и рисовать нечего:
+/// какое именно сообщение показывает состояние, решает сама игра, а здесь остаётся только вывод.
+fn draw_message(game: &Game, field: Field) {
+    let Some(message) = game.state.message() else {
+        return;
+    };
+
+    // Ширину строки нужно измерить: центрировать текст иначе нечем.
+    let width = measure_text(message, None, MESSAGE_FONT_SIZE, 1.0).width;
+
+    draw_text(
+        message,
+        (field.width - width) / 2.0,
+        field.height / 2.0,
+        f32::from(MESSAGE_FONT_SIZE),
         FIELD_COLOR,
     );
 }

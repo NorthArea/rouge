@@ -30,6 +30,23 @@ pub enum GameState {
     GameWon,
 }
 
+impl GameState {
+    /// Сообщение, которое состояние показывает игроку, или его отсутствие в идущем раунде. Выбор
+    /// текста — чистая функция от состояния, поэтому он проверяется тестом, а непокрытой остаётся
+    /// только сама отрисовка (D-10). Текст латиницей: кириллические глифы встроенного шрифта
+    /// Macroquad наблюдением не проверены.
+    pub fn message(&self) -> Option<&'static str> {
+        match self {
+            GameState::WaitingToStart | GameState::LifeLost => Some("Press SPACE to start"),
+            GameState::LevelCompleted => Some("LEVEL COMPLETED"),
+            GameState::GameOver => Some("GAME OVER"),
+            GameState::GameWon => Some("YOU WIN"),
+            // Идущему раунду сообщать нечего: надпись поверх поля мешала бы игре.
+            GameState::Playing => None,
+        }
+    }
+}
+
 /// Игра целиком: поле, ракетка, мяч, блоки, счёт, жизни и состояние. Это единственное место, где
 /// игровые части встречаются вместе, поэтому переходы между состояниями живут здесь, а не в кадре.
 pub struct Game {
@@ -656,5 +673,30 @@ mod tests {
             "{} не сбросила счётчик выпадения: {}",
             setback, game.destroyed_since_drop
         );
+    }
+
+    /// Сообщения — часть требований к игре, поэтому тест сверяется с ними дословно.
+    #[test]
+    fn each_state_shows_its_own_message() {
+        let expected = [
+            (GameState::WaitingToStart, Some("Press SPACE to start")),
+            (GameState::LifeLost, Some("Press SPACE to start")),
+            (GameState::LevelCompleted, Some("LEVEL COMPLETED")),
+            (GameState::GameOver, Some("GAME OVER")),
+            (GameState::GameWon, Some("YOU WIN")),
+            // Идущему раунду сообщать нечего: надпись поверх поля мешала бы игре.
+            (GameState::Playing, None),
+        ];
+
+        for (state, message) in expected {
+            assert_eq!(
+                state.message(),
+                message,
+                "состояние {:?} показало {:?}, ожидалось {:?}",
+                state,
+                state.message(),
+                message
+            );
+        }
     }
 }
