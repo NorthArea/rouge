@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-MENU-2
 LAST_COMPLETED_TASK: T-MENU-1
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: <pending>/T-MENU-1
+LAST_CHECKPOINT: 5652fdd/T-MENU-1
 NEXT_ACTION: Взять `T-MENU-2` — крейт `menu` (список игр, курсор, выбор, вызов `run()`, возврат в меню, выход) по описанию позиции 2 в `workflow/backlog.md`; зависимость `T-MENU-1` закрыта, обе игры дают `pub async fn run()`. Позиция несёт специальный gate: наблюдаемый прогон Pong → меню → Arkanoid → меню → выход.
 
 ## Реестр статусов задач
