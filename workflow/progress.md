@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-7
 LAST_COMPLETED_TASK: T-ARK-6
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 1065683/T-ARK-5
+LAST_CHECKPOINT: 26d1d96/T-ARK-6
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-7 (жизни Arkanoid, потеря мяча за нижней границей, состояния `WaitingToStart` / `Playing` / `LifeLost` / `GameOver`, старт раунда по `Space`). Зависимости `T-ARK-4` и `T-ARK-5` выполнены. Варианты `LevelCompleted` и `GameWon` на этой позиции не объявляются: без уровней они мёртвый код и уронят гейт под `-D warnings`. Специального gate у позиции нет.
 
 ## Реестр статусов задач
