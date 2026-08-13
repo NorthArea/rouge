@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-12
 LAST_COMPLETED_TASK: T-ARK-11
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 32ae4c0/T-ARK-10
+LAST_CHECKPOINT: e6546a2/T-ARK-11
 NEXT_ACTION: Спросить владельца, запускать ли специальный gate позиции T-ARK-12 — наблюдаемый прогон `cargo run -p arkanoid` по чек-листу приёмки первой версии из тринадцати пунктов, включая потерю жизни, бонус, `GameOver` и `GameWon`. Непрерывный прогон закончен на этой позиции по контракту: очередь ведётся до специального гейта. Аудит покрытия по D-18 и аудит простоты внутри T-ARK-12 выполняются до gate.
 
 ## Реестр статусов задач
