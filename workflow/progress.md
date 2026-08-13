@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-5
 LAST_COMPLETED_TASK: T-ARK-4
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 231bb5c/T-ARK-3
+LAST_CHECKPOINT: 9dff540/T-ARK-4
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-5 (коллекция `Vec<Brick>` в Arkanoid, AABB-столкновение мяча с блоком, уничтожение `Normal` с одного попадания, счёт и его отрисовка). Зависимость `T-ARK-3` выполнена: `Ball` существует и покрыт тестами. Специального gate у позиции нет.
 
 ## Реестр статусов задач
