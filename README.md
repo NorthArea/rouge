@@ -14,7 +14,7 @@
 | Игра | Каталог | Запуск | Состояние |
 |---|---|---|---|
 | Game 01 — Pong | [`pong/`](pong/README.md) | `cargo run -p pong` | завершена и принята |
-| Game 02 — Arkanoid | `arkanoid/` | `cargo run -p arkanoid` | в работе |
+| Game 02 — Arkanoid | [`arkanoid/`](arkanoid/README.md) | `cargo run -p arkanoid` | завершена |
 | Game 03 — Asteroids | — | — | не начата |
 
 Объяснение игры и разобранных в ней концепций лежит в README самой игры.
