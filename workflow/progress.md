@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-PONG-8
 LAST_COMPLETED_TASK: T-PONG-7
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 8f92fba/T-PONG-6
+LAST_CHECKPOINT: e37c6d5/T-PONG-7
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-PONG-8 (аудит покрытия unit-тестами по D-10, полный набор проверок качества и подтверждение критериев приёмки); у позиции есть специальный gate — наблюдаемый прогон `cargo run` по чек-листу, результат подтверждает владелец.
 
 ## Реестр статусов задач
