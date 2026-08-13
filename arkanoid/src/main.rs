@@ -2,11 +2,13 @@ use macroquad::prelude::*;
 
 mod ball;
 mod brick;
+mod game;
 mod paddle;
 mod score;
 
 use ball::Ball;
 use brick::{Brick, BrickKind};
+use game::Game;
 use paddle::Paddle;
 use score::Score;
 
@@ -56,10 +58,7 @@ async fn main() {
     // Окно не изменяет размер, поэтому поле — данные, заданные один раз, а не результат опроса
     // Macroquad в каждом кадре.
     let field = Field::new(screen_width(), screen_height());
-    let mut player = Paddle::new(field);
-    let mut ball = Ball::new(field);
-    let mut bricks = brick::layout(field);
-    let mut score = Score::default();
+    let mut game = Game::new(field);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -69,27 +68,27 @@ async fn main() {
         if is_key_pressed(KeyCode::Escape) {
             break;
         }
+        // Старт раунда — разовое нажатие, а не удержание: игра реагирует на нажатие один раз,
+        // сколько бы кадров клавишу ни держали.
+        if is_key_pressed(KeyCode::Space) {
+            game.start_round();
+        }
         let direction = read_direction();
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
 
-        // 3. Обновление состояния.
-        player.update(direction, field, delta_time);
-        ball.update(delta_time);
-
-        // 4. Проверка столкновений. Пока это стены, ракетка и блоки: нижней стены у поля нет, поэтому
-        //    мяч, ушедший вниз, не возвращается — это временный тупик до появления жизней.
-        ball.bounce_off_walls(field);
-        ball.bounce_off_paddle(&player);
-        brick::bounce_off_bricks(&mut ball, &mut bricks, &mut score);
+        // 3. Обновление состояния и 4. проверка столкновений. Обе стадии зависят от состояния игры,
+        //    поэтому они перешли внутрь `Game::update` и перечислены в том же порядке там: до подачи
+        //    мяч лежит на ракетке, в раунде летит, сталкивается и может быть потерян.
+        game.update(direction, delta_time);
 
         // 5. Рендеринг.
         draw_field(field);
-        draw_bricks(&bricks);
-        draw_paddle(&player);
-        draw_ball(&ball);
-        draw_score(&score);
+        draw_bricks(&game.bricks);
+        draw_paddle(&game.paddle);
+        draw_ball(&game.ball);
+        draw_score(&game.score);
 
         // 6. Следующий кадр.
         next_frame().await;
