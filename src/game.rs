@@ -188,6 +188,41 @@ mod tests {
         );
     }
 
+    /// Обратная сторона предыдущего перехода: раунд заканчивается голом и только им. Без этого теста
+    /// безусловный выход из `Playing` набор пропускает — гол проверялся только со стороны гола.
+    #[test]
+    fn a_round_without_a_goal_keeps_playing() {
+        let mut game = game_with_plain_paddles();
+        game.state = GameState::Playing;
+        // Мяч там, где его ставит начало матча: за проверяемый кадр он не доходит ни до боковой
+        // границы, ни до границ поля по вертикали, ни до ракеток.
+        let started_at = (game.ball.x, game.ball.y);
+
+        game.update(STILL, STILL, FRAME);
+
+        assert_eq!(
+            game.state,
+            GameState::Playing,
+            "кадр раунда без гола завершил раунд: состояние {:?}",
+            game.state
+        );
+        assert_eq!(
+            (game.score.left, game.score.right),
+            (0, 0),
+            "кадр раунда без гола изменил счёт: {}:{}",
+            game.score.left,
+            game.score.right
+        );
+        // Раунд, в котором мяч стоит, раундом не был бы: кадр обязан его переместить.
+        assert_ne!(
+            (game.ball.x, game.ball.y),
+            started_at,
+            "кадр идущего раунда не сдвинул мяч: ({}, {})",
+            game.ball.x,
+            game.ball.y
+        );
+    }
+
     #[test]
     fn the_scored_point_starts_the_next_round_waiting() {
         let mut game = game_with_plain_paddles();
