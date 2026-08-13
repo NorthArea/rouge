@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ARK-4
 LAST_COMPLETED_TASK: T-ARK-3
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: d372b47/T-ARK-2
+LAST_CHECKPOINT: 231bb5c/T-ARK-3
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ARK-4 (столкновение мяча с ракеткой Arkanoid и отскок с направлением, зависящим от точки попадания по горизонтали). Зависимости `T-ARK-2` и `T-ARK-3` выполнены: `Paddle` и `Ball` существуют в крейте `arkanoid` и покрыты тестами. Специального gate у позиции нет.
 
 ## Реестр статусов задач
