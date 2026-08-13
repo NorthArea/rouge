@@ -1,16 +1,5 @@
 use crate::ball::Ball;
 use crate::score::Score;
-use crate::Field;
-
-/// Раскладка блоков задана прямо в коде: ни внешнего редактора, ни загрузки из файлов. Пока раскладка
-/// одна — сетка из рядов и столбцов под верхней границей поля.
-const ROWS: u32 = 5;
-const COLUMNS: u32 = 10;
-const HEIGHT: f32 = 24.0;
-/// Зазор между блоками и отступ сетки от краёв поля и от его верхней границы.
-const GAP: f32 = 6.0;
-const SIDE_MARGIN: f32 = 40.0;
-const TOP_MARGIN: f32 = 60.0;
 
 /// Тип блока. Обычный `enum` и ничего больше: типов три, они отличаются прочностью и очками, и
 /// никакой иерархии для этого не нужно (D-02).
@@ -75,40 +64,6 @@ impl Brick {
     /// одном и том же разошлись бы.
     pub fn destroyed(&self) -> bool {
         self.hits_left == 0
-    }
-}
-
-/// Раскладка блоков для поля: сетка `ROWS` × `COLUMNS`, растянутая по ширине поля. Ширина блока
-/// считается из ширины поля, поэтому сетка занимает её целиком при любом размере окна.
-pub fn layout(field: Field) -> Vec<Brick> {
-    let row_width = field.width - 2.0 * SIDE_MARGIN;
-    let width = (row_width - GAP * (COLUMNS - 1) as f32) / COLUMNS as f32;
-
-    let mut bricks = Vec::new();
-    for row in 0..ROWS {
-        for column in 0..COLUMNS {
-            bricks.push(Brick::new(
-                SIDE_MARGIN + column as f32 * (width + GAP),
-                TOP_MARGIN + row as f32 * (HEIGHT + GAP),
-                width,
-                HEIGHT,
-                kind_at(row, column),
-            ));
-        }
-    }
-
-    bricks
-}
-
-/// Тип блока по его месту в сетке. Раскладка задана прямо в коде, как и вся конфигурация уровней:
-/// верхний ряд прочный, по краям среднего ряда стоят неразрушимые блоки, остальное — обычные.
-fn kind_at(row: u32, column: u32) -> BrickKind {
-    if row == 0 {
-        BrickKind::Strong
-    } else if row == 2 && (column == 0 || column == COLUMNS - 1) {
-        BrickKind::Indestructible
-    } else {
-        BrickKind::Normal
     }
 }
 

@@ -3,6 +3,7 @@ use macroquad::prelude::*;
 mod ball;
 mod brick;
 mod game;
+mod level;
 mod paddle;
 mod score;
 
@@ -72,6 +73,9 @@ async fn main() {
         // сколько бы кадров клавишу ни держали.
         if is_key_pressed(KeyCode::Space) {
             game.start_round();
+        }
+        if is_key_pressed(KeyCode::R) {
+            game.restart();
         }
         let direction = read_direction();
 
