@@ -61,9 +61,10 @@ async fn main() {
         player.update(direction, field, delta_time);
         ball.update(delta_time);
 
-        // 4. Проверка столкновений. Пока это только стены: нижней стены у поля нет, поэтому мяч,
+        // 4. Проверка столкновений. Пока это стены и ракетка: нижней стены у поля нет, поэтому мяч,
         //    ушедший вниз, не возвращается — это временный тупик до появления жизней.
         ball.bounce_off_walls(field);
+        ball.bounce_off_paddle(&player);
 
         // 5. Рендеринг.
         draw_field(field);

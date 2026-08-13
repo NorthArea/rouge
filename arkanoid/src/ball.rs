@@ -1,3 +1,4 @@
+use crate::paddle::Paddle;
 use crate::Field;
 
 /// Значения по умолчанию для мяча. Как и у ракетки, размер и скорость остаются данными: логика читает
@@ -62,6 +63,50 @@ impl Ball {
             self.velocity_y = -self.velocity_y;
         }
     }
+
+    /// Столкновение с ракеткой и отражение от неё. Ракетка приходит аргументом, поэтому проверка
+    /// вызывается из теста без окна. Отражение не сводится к смене знака вертикальной скорости:
+    /// горизонтальная составляющая зависит от того, куда по ракетке пришёлся удар.
+    pub fn bounce_off_paddle(&mut self, paddle: &Paddle) {
+        // Одного пересечения для отскока мало: ракетка в Arkanoid одна и стоит внизу, поэтому мяч
+        // отбивается только на пути вниз. Уже отбитый мяч, ещё не успевший выйти из ракетки, иначе
+        // разворачивался бы в каждом кадре и залип бы в ней.
+        if !self.overlaps(paddle) || self.velocity_y <= 0.0 {
+            return;
+        }
+
+        let speed_y = self.velocity_y.abs();
+
+        self.velocity_y = -self.velocity_y;
+        // Горизонтальная составляющая задана долей той же вертикальной скорости, а не отдельной
+        // константой: величина `velocity_y` при отскоке не меняется, поэтому мяч не может разогнаться
+        // от удара к удару, а на самом краю ракетки уходит ровно под 45°.
+        self.velocity_x = self.hit_offset(paddle) * speed_y;
+
+        // Мяч ставится вплотную к верхней стороне ракетки: проверка направления и так не даст ему
+        // отразиться второй раз, но оставленный внутри ракетки мяч выглядел бы залипшим в ней.
+        self.y = paddle.y - self.size;
+    }
+
+    /// Место попадания по горизонтали: -1 — левый край ракетки, 0 — её центр, 1 — правый край. Мяч
+    /// может задеть ракетку самым краем, и тогда его центр окажется за пределами ракетки, поэтому
+    /// смещение ограничивается диапазоном.
+    fn hit_offset(&self, paddle: &Paddle) -> f32 {
+        let ball_center = self.x + self.size / 2.0;
+        let paddle_center = paddle.x + paddle.width / 2.0;
+
+        ((ball_center - paddle_center) / (paddle.width / 2.0)).clamp(-1.0, 1.0)
+    }
+
+    /// Пересечение двух прямоугольников (AABB), написанное вручную: physics engine в проекте нет.
+    /// Прямоугольники не пересекаются, если один целиком левее, правее, выше или ниже другого, —
+    /// значит пересекаются они тогда, когда неверно всё это сразу.
+    fn overlaps(&self, paddle: &Paddle) -> bool {
+        self.x < paddle.x + paddle.width
+            && self.x + self.size > paddle.x
+            && self.y < paddle.y + paddle.height
+            && self.y + self.size > paddle.y
+    }
 }
 
 #[cfg(test)]
@@ -94,6 +139,31 @@ mod tests {
             moving.update(delta_time);
         }
         moving
+    }
+
+    /// Ракетка теста тоже с круглыми размерами: она занимает 400..500 по горизонтали и 540..556 по
+    /// вертикали, её центр по горизонтали — 450.
+    fn paddle() -> Paddle {
+        Paddle {
+            x: 400.0,
+            y: 540.0,
+            width: 100.0,
+            height: 16.0,
+            speed: 200.0,
+        }
+    }
+
+    /// Мяч падает вертикально ровно на центр ракетки: его центр по горизонтали 440 + 20 / 2 = 450, а
+    /// по вертикали он занимает 530..550 против ракетки 540..556, то есть уже пересекается с ней.
+    /// Горизонтальной скорости у него нет, поэтому всё, что появится по этой оси, — работа отскока.
+    fn hitting_the_paddle_center() -> Ball {
+        Ball {
+            x: 440.0,
+            y: 530.0,
+            velocity_x: 0.0,
+            velocity_y: 300.0,
+            ..ball()
+        }
     }
 
     #[test]
@@ -266,5 +336,122 @@ mod tests {
                 expected.1
             );
         }
+    }
+
+    #[test]
+    fn hit_at_the_paddle_center_sends_the_ball_up() {
+        let mut hitting = hitting_the_paddle_center();
+
+        hitting.bounce_off_paddle(&paddle());
+
+        assert!(
+            (hitting.velocity_y + 300.0).abs() < TOLERANCE,
+            "ракетка не отправила мяч вверх: velocity_y = {}, ожидалось -300",
+            hitting.velocity_y
+        );
+        assert!(
+            hitting.velocity_x.abs() < TOLERANCE,
+            "попадание в центр ракетки увело мяч в сторону: velocity_x = {}, ожидалось около 0",
+            hitting.velocity_x
+        );
+    }
+
+    #[test]
+    fn hit_left_of_the_paddle_center_sends_the_ball_left() {
+        // Центр мяча 415 + 20 / 2 = 425 против центра ракетки 450: половина левой половины ракетки,
+        // то есть смещение -0.5, а горизонтальная скорость -0.5 * 300 = -150.
+        let mut hitting = Ball {
+            x: 415.0,
+            ..hitting_the_paddle_center()
+        };
+
+        hitting.bounce_off_paddle(&paddle());
+
+        assert!(
+            (hitting.velocity_x + 150.0).abs() < TOLERANCE,
+            "попадание левее центра не увело мяч влево: velocity_x = {}, ожидалось -150",
+            hitting.velocity_x
+        );
+    }
+
+    #[test]
+    fn hit_right_of_the_paddle_center_sends_the_ball_right() {
+        // Зеркально предыдущему тесту: центр мяча 465 + 20 / 2 = 475, смещение 0.5, скорость 150.
+        let mut hitting = Ball {
+            x: 465.0,
+            ..hitting_the_paddle_center()
+        };
+
+        hitting.bounce_off_paddle(&paddle());
+
+        assert!(
+            (hitting.velocity_x - 150.0).abs() < TOLERANCE,
+            "попадание правее центра не увело мяч вправо: velocity_x = {}, ожидалось 150",
+            hitting.velocity_x
+        );
+    }
+
+    #[test]
+    fn ball_missing_the_paddle_keeps_its_velocity() {
+        // Промах по горизонтали (мяч 100..120 против ракетки 400..500) и промах по вертикали
+        // (мяч 100..120 против ракетки 540..556): пересечения нет ни по одной из осей.
+        let misses = [
+            Ball {
+                x: 100.0,
+                ..hitting_the_paddle_center()
+            },
+            Ball {
+                y: 100.0,
+                ..hitting_the_paddle_center()
+            },
+        ];
+
+        for mut missing in misses {
+            let (x, y) = (missing.x, missing.y);
+
+            missing.bounce_off_paddle(&paddle());
+
+            assert!(
+                missing.velocity_x.abs() < TOLERANCE
+                    && (missing.velocity_y - 300.0).abs() < TOLERANCE,
+                "промах мимо ракетки из ({}, {}) изменил скорость: velocity = ({}, {}), ожидалось (0, 300)",
+                x,
+                y,
+                missing.velocity_x,
+                missing.velocity_y
+            );
+        }
+    }
+
+    #[test]
+    fn ball_already_moving_up_does_not_bounce_again() {
+        // Мяч всё ещё пересекается с ракеткой, но уже отскочил и летит вверх. Второй отскок развернул
+        // бы его обратно в ракетку, и мяч залип бы в ней, разворачиваясь в каждом кадре.
+        let mut leaving = Ball {
+            velocity_y: -300.0,
+            ..hitting_the_paddle_center()
+        };
+
+        leaving.bounce_off_paddle(&paddle());
+
+        assert!(
+            (leaving.velocity_y + 300.0).abs() < TOLERANCE,
+            "мяч, летящий от ракетки, отразился второй раз: velocity_y = {}, ожидалось -300",
+            leaving.velocity_y
+        );
+    }
+
+    #[test]
+    fn bounce_puts_the_ball_above_the_paddle() {
+        let mut hitting = hitting_the_paddle_center();
+
+        hitting.bounce_off_paddle(&paddle());
+
+        // Мяч, оставленный внутри ракетки, выглядел бы залипшим в ней, пока из неё выбирается.
+        assert!(
+            hitting.y + hitting.size <= paddle().y + TOLERANCE,
+            "мяч остался внутри ракетки: нижний край = {}, ожидалось не ниже 540",
+            hitting.y + hitting.size
+        );
     }
 }
