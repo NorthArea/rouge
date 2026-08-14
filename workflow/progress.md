@@ -4,13 +4,13 @@
 
 ## Указатель восстановления
 
-PROJECT_STATUS: COMPLETE
+PROJECT_STATUS: IN_PROGRESS
 CURRENT_TASK: none
-NEXT_BACKLOG_ID: none
+NEXT_BACKLOG_ID: T-AST-1
 LAST_COMPLETED_TASK: T-MENU-2
 LAST_GREEN_COMMAND: make check
 LAST_CHECKPOINT: 1628803/T-MENU-2
-NEXT_ACTION: Открытых задач нет. Обе игры (Pong, Arkanoid) и общее меню выбора игры реализованы, проверены полным гейтом и приняты владельцем; `cargo run` из корня открывает меню, из которого запускается любая из игр в одном окне, без выхода из процесса между заходами. Очередь `workflow/backlog.md` пуста. Роадмап фиксирует порядок `Game 01 — Pong → Game 02 — Arkanoid → Game 03 — Asteroids`, но технического задания на Asteroids ещё нет — не придумывать его самостоятельно и не заводить задачи `T-AST-*` без решения владельца. Следующий шаг репозитория начинается только с `/workflow:idea` по новому заданию владельца.
+NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-1 (крейт `asteroids` четвёртым участником workspace: окно, поле, явные стадии кадра, `lib.rs` с `pub async fn run()` и тонкий `main.rs`, выход по `Esc`). Зависимостей нет; у позиции специальный gate — наблюдаемый прогон, подтверждает владелец. Pong, Arkanoid и меню завершены и приняты; порядок игр — три, четвёртая не вносится (D-32).
 
 ## Реестр статусов задач
 
