@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-4
 LAST_COMPLETED_TASK: T-AST-3
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: <short-sha>/<TASK_ID>
+LAST_CHECKPOINT: ad7fc56/T-AST-3
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-4 (screen wrapping корабля по обеим осям через `rem_euclid`, корректный при перелёте больше размера поля за один кадр).
 
 ## Реестр статусов задач
