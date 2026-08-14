@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-2
 LAST_COMPLETED_TASK: T-AST-1
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: <short-sha>/<TASK_ID>
+LAST_CHECKPOINT: 7300c72/T-AST-1
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-2 (корабль: `Vec2`-позиция и скорость, угол, вращение через delta time, единственная функция перехода «угол → направление» `facing()`, отрисовка треугольником).
 
 ## Реестр статусов задач
