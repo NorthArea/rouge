@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-3
 LAST_COMPLETED_TASK: T-AST-2
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: <short-sha>/<TASK_ID>
+LAST_CHECKPOINT: 7a7cd02/T-AST-2
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-3 (тяга, ускорение, инерция, `velocity` на `Ship`, предел скорости `clamp_length_max`, ловушка NaN на нулевой скорости, факел двигателя).
 
 ## Реестр статусов задач
