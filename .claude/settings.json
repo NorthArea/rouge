@@ -17,6 +17,9 @@
       "Bash(git merge-base:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
+      "Bash(git remote:*)",
+      "Bash(git push origin main)",
+      "Bash(git push -u origin main)",
       "Bash(git mv *)",
       "Bash(curl:*)",
       "Bash(echo:*)",
@@ -63,7 +66,6 @@
       "Bash(brew install:*)",
       "Bash(brew uninstall:*)",
       "Bash(pip install:*)",
-      "Bash(git push:*)",
       "Bash(git reset --hard:*)",
       "Bash(git clean:*)"
     ],
