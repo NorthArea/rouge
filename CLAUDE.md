@@ -302,7 +302,8 @@ command that ran in the current session counts.
 - End the run after a special gate, a red full gate, an unsatisfied dependency or any stop condition.
 - Prefer the smallest change satisfying the current task.
 - Never reset hard, clean the worktree, force-push, create tags or update a remote unless explicitly allowed
-  by the project contract.
+  by the project contract. The owner allowed one remote operation on 2026-09-21: publishing `main` to
+  `origin` (`git@github.com:NorthArea/rouge.git`). Nothing else about remotes is allowed by that decision.
 - Never weaken tests or hide failures.
 - A test that passes the first time it runs proves nothing yet. Say so, then make it fail on purpose:
   mutate the production code it covers, watch that test go red while the others stay green, revert the

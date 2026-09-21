@@ -8,3 +8,4 @@ tmp/
 
 # Claude Code: the project contract in .claude/ is tracked, personal overrides are not.
 .claude/settings.local.json
+.mcp.json
