@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-7
 LAST_COMPLETED_TASK: T-ROOM-6
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-6
+LAST_CHECKPOINT: 9ab6b59/T-ROOM-6
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-7 (геометрия комнаты как данные: Aabb, коллекция препятствий и стен, проверка пересечения двух коробок).
 
 ## Реестр статусов задач
