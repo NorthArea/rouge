@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: none
 LAST_COMPLETED_TASK: T-AST-13
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: bdfa037/T-AST-12
+LAST_CHECKPOINT: df3d886/T-AST-13
 NEXT_ACTION: владелец выполняет `cargo run` по чек-листу приёмки T-AST-13 (меню → Asteroids → меню и игровые пункты); после подтверждения — PROJECT_STATUS: COMPLETE.
 
 ## Реестр статусов задач
