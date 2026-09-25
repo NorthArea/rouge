@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-6
 LAST_COMPLETED_TASK: T-ROOM-5
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-5
+LAST_CHECKPOINT: dd39143/T-ROOM-5
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-6 (прыжок: импульс вверх по Space только с земли, в воздухе не проходит, читать нажатие, не удержание).
 
 ## Реестр статусов задач
