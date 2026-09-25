@@ -28,6 +28,38 @@ pub enum GameState {
     GameOver,
 }
 
+impl GameState {
+    /// Текст, который видит игрок в этом состоянии; `wave` — номер волны, которая начнётся
+    /// следующей (нужен только для `WaveCompleted`). Латиница — кириллические глифы встроенного
+    /// шрифта Macroquad наблюдением не проверены (тот же прецедент, что в Pong/Arkanoid/Asteroids).
+    pub fn message(self, wave: u32) -> Option<String> {
+        match self {
+            GameState::WaitingToStart => Some("Press SPACE to start".to_string()),
+            GameState::Playing => None,
+            GameState::WaveCompleted => Some(format!("Wave {wave}\nPress SPACE to continue")),
+            GameState::GameOver => Some("GAME OVER\nPress R to restart".to_string()),
+        }
+    }
+}
+
+/// Короткий визуальный эффект на месте убитого врага — растущий и затухающий круг, ничего общего с
+/// системой частиц (D-41 её запрещает первой версии): одна точка и один таймер жизни, тот же приём,
+/// что у `Bullet::time_to_live`.
+const EFFECT_DURATION: f32 = 0.3;
+
+pub struct Effect {
+    pub position: Vec2,
+    time_remaining: f32,
+}
+
+impl Effect {
+    /// Доля прожитого времени эффекта, `0.0` — только появился, `1.0` — вот-вот исчезнет; отрисовка
+    /// использует её, чтобы растить радиус и гасить яркость (не тестируется — сама отрисовка, D-10).
+    pub fn progress(&self) -> f32 {
+        1.0 - self.time_remaining / EFFECT_DURATION
+    }
+}
+
 /// Ввод одного кадра, уже прочитанный Macroquad-стадией `run()`: `Game` не читает клавиатуру и мышь
 /// сама (D-10) и вызывается из тестов без окна.
 pub struct Input {
@@ -52,6 +84,7 @@ pub struct Game {
     invulnerability_timer: f32,
     pub ammo: i32,
     pub pickups: Vec<Pickup>,
+    pub effects: Vec<Effect>,
     kills: u32,
     pub wave: u32,
 }
@@ -72,6 +105,7 @@ impl Game {
             invulnerability_timer: 0.0,
             ammo: START_AMMO,
             pickups: Vec::new(),
+            effects: Vec::new(),
             kills: 0,
             wave: 1,
         }
@@ -82,6 +116,11 @@ impl Game {
             // Мир не обновляется в GameOver, и сигнал старта не воскрешает законченную игру.
             return;
         }
+
+        for effect in &mut self.effects {
+            effect.time_remaining -= delta_time;
+        }
+        self.effects.retain(|effect| effect.time_remaining > 0.0);
 
         match self.state {
             GameState::WaitingToStart => {
@@ -122,6 +161,10 @@ impl Game {
                     if let Some(kind) = pickup::pickup_for_kill(self.kills) {
                         self.pickups.push(Pickup::new(position, kind));
                     }
+                    self.effects.push(Effect {
+                        position,
+                        time_remaining: EFFECT_DURATION,
+                    });
                 }
                 for pickup in &mut self.pickups {
                     pickup.tick(delta_time);
@@ -199,6 +242,13 @@ impl Game {
     /// полей по одному.
     pub fn restart(&mut self) {
         *self = Game::new(self.arena);
+    }
+
+    /// Видимый признак неуязвимости после касания — отрисовка использует его, чтобы притушить или
+    /// мигнуть игроком; сама отрисовка не тестируется (D-10), поэтому тестом покрыт только сам факт,
+    /// что после касания это возвращает `true` (см. тесты контактного урона выше).
+    pub fn is_invulnerable(&self) -> bool {
+        self.invulnerability_timer > 0.0
     }
 }
 
@@ -607,6 +657,71 @@ mod tests {
             GameState::GameOver,
             "смерть последнего врага и урон игроку в одном кадре не дали GameOver: состояние {:?}",
             game.state
+        );
+    }
+
+    #[test]
+    fn each_state_shows_its_own_message() {
+        assert_eq!(
+            GameState::WaitingToStart.message(2),
+            Some("Press SPACE to start".to_string()),
+            "WaitingToStart"
+        );
+        assert_eq!(
+            GameState::Playing.message(2),
+            None,
+            "Playing должен быть без сообщения"
+        );
+        assert_eq!(
+            GameState::WaveCompleted.message(2),
+            Some("Wave 2\nPress SPACE to continue".to_string()),
+            "WaveCompleted"
+        );
+        assert_eq!(
+            GameState::GameOver.message(2),
+            Some("GAME OVER\nPress R to restart".to_string()),
+            "GameOver"
+        );
+    }
+
+    #[test]
+    fn is_invulnerable_reflects_the_cooldown_after_a_touch() {
+        let mut game = game_with_enemy_on_player();
+        assert!(
+            !game.is_invulnerable(),
+            "новая игра уже неуязвима без касания"
+        );
+
+        game.update(&still_input(), 1.0 / 60.0);
+
+        assert!(
+            game.is_invulnerable(),
+            "касание не включило неуязвимость: is_invulnerable() = false"
+        );
+    }
+
+    #[test]
+    fn a_kill_leaves_a_death_effect_that_fades_and_disappears() {
+        let mut game = playing_game();
+        let kill_position = vec2(300.0, 300.0);
+        game.enemies = vec![Enemy::new(kill_position)];
+        game.enemies[0].health = 1;
+        game.bullets = vec![Bullet::new(kill_position, Vec2::X)];
+
+        game.update(&still_input(), 1.0 / 60.0);
+        assert_eq!(game.effects.len(), 1, "убийство не оставило эффект");
+        assert!(
+            (game.effects[0].position - kill_position).length() < 5.0,
+            "эффект появился в {:?}, ожидалась позиция убитого врага {:?}",
+            game.effects[0].position,
+            kill_position
+        );
+
+        game.update(&still_input(), EFFECT_DURATION + 0.01);
+        assert!(
+            game.effects.is_empty(),
+            "эффект пережил свою длительность: осталось {}",
+            game.effects.len()
         );
     }
 }

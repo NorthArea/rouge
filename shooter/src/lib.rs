@@ -14,7 +14,7 @@ mod score;
 use arena::Arena;
 use bullet::Bullet;
 use enemy::Enemy;
-use game::{Game, Input};
+use game::{Effect, Game, Input};
 use pickup::{Pickup, PickupKind};
 use player::Player;
 
@@ -23,6 +23,9 @@ const ENEMY_COLOR: Color = Color::new(0.85, 0.25, 0.25, 1.0);
 /// Цвета pickup: разные для здоровья и патронов, чтобы игрок различал их издалека.
 const HEALTH_PICKUP_COLOR: Color = Color::new(0.3, 0.85, 0.4, 1.0);
 const AMMO_PICKUP_COLOR: Color = Color::new(0.9, 0.8, 0.2, 1.0);
+/// Игрок во время неуязвимости рисуется этим более тусклым цветом вместо обычного — видимый признак
+/// того, что повторное касание сейчас не в счёт.
+const PLAYER_INVULNERABLE_COLOR: Color = Color::new(0.88, 0.89, 0.93, 0.4);
 
 /// Размер окна, тот же, что в `window_conf` (`main.rs`). Используется камерой, чтобы вычислить, какая
 /// часть арены видна, поэтому число не может разойтись с настройками окна незаметно.
@@ -94,7 +97,7 @@ pub async fn run() {
             ..Default::default()
         });
         draw_arena(arena);
-        draw_player(&game.player);
+        draw_player(&game.player, game.is_invulnerable());
         for bullet in &game.bullets {
             draw_bullet(bullet);
         }
@@ -104,7 +107,14 @@ pub async fn run() {
         for pickup in &game.pickups {
             draw_pickup(pickup);
         }
+        for effect in &game.effects {
+            draw_effect(effect);
+        }
         set_default_camera();
+        draw_hud(&game);
+        if let Some(message) = game.state.message(game.wave + 1) {
+            draw_message(screen_size, &message);
+        }
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -155,16 +165,22 @@ fn draw_arena(arena: Arena) {
 
 /// Кругом с видимым центром: сам круг — форма столкновения (D-38), точка в центре — чтобы позиция
 /// читалась однозначно, а не только по контуру. Короткая линия от центра в сторону `facing()` — ствол,
-/// показывающий, куда целится игрок.
-fn draw_player(player: &Player) {
+/// показывающий, куда целится игрок. Во время неуязвимости (`invulnerable`) игрок рисуется тусклее —
+/// видимый признак того, что повторное касание сейчас не в счёт (T-TDS-12).
+fn draw_player(player: &Player, invulnerable: bool) {
+    let color = if invulnerable {
+        PLAYER_INVULNERABLE_COLOR
+    } else {
+        ARENA_COLOR
+    };
     draw_circle_lines(
         player.position.x,
         player.position.y,
         player.radius,
         2.0,
-        ARENA_COLOR,
+        color,
     );
-    draw_circle(player.position.x, player.position.y, 2.0, ARENA_COLOR);
+    draw_circle(player.position.x, player.position.y, 2.0, color);
     let barrel_tip = player.barrel_position();
     draw_line(
         player.position.x,
@@ -172,6 +188,42 @@ fn draw_player(player: &Player) {
         barrel_tip.x,
         barrel_tip.y,
         3.0,
-        ARENA_COLOR,
+        color,
     );
+}
+
+/// Растущий и затухающий круг на месте уничтоженного врага (`Effect::progress` — доля прожитого
+/// времени эффекта); отрисовка не тестируется (D-10).
+fn draw_effect(effect: &Effect) {
+    let progress = effect.progress();
+    let radius = 8.0 + progress * 24.0;
+    let mut color = ENEMY_COLOR;
+    color.a = 1.0 - progress;
+    draw_circle_lines(effect.position.x, effect.position.y, radius, 2.0, color);
+}
+
+/// HUD в левом верхнем углу — экранные координаты, стадия после `set_default_camera` (D-39): здесь
+/// UI рисуется отдельно от мира и не уедет вместе с камерой.
+fn draw_hud(game: &Game) {
+    let text = format!(
+        "Health {}   Ammo {}   Score {}   Wave {}",
+        game.health.max(0),
+        game.ammo,
+        game.score.value(),
+        game.wave
+    );
+    draw_text(&text, 16.0, 28.0, 24.0, ARENA_COLOR);
+}
+
+/// Сообщение состояния по центру окна (`GameState::message`); латиница — та же причина, что в
+/// Pong/Arkanoid/Asteroids (кириллические глифы встроенного шрифта Macroquad наблюдением не
+/// проверены). Центрируется по окну, а не по арене — сообщение рисуется уже в экранных координатах.
+fn draw_message(screen_size: Vec2, message: &str) {
+    const FONT_SIZE: f32 = 32.0;
+    for (line_index, line) in message.lines().enumerate() {
+        let dimensions = measure_text(line, None, FONT_SIZE as u16, 1.0);
+        let x = (screen_size.x - dimensions.width) / 2.0;
+        let y = screen_size.y / 2.0 + line_index as f32 * (FONT_SIZE + 6.0);
+        draw_text(line, x, y, FONT_SIZE, ARENA_COLOR);
+    }
 }
