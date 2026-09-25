@@ -1,10 +1,16 @@
 use macroquad::prelude::*;
 
 mod arena;
+mod camera;
 mod player;
 
 use arena::Arena;
 use player::Player;
+
+/// Размер окна, тот же, что в `window_conf` (`main.rs`). Используется камерой, чтобы вычислить, какая
+/// часть арены видна, поэтому число не может разойтись с настройками окна незаметно.
+const SCREEN_WIDTH: f32 = 960.0;
+const SCREEN_HEIGHT: f32 = 600.0;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
 const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
@@ -45,9 +51,18 @@ pub async fn run() {
 
         // 4. Проверка столкновений. Пока нечего проверять.
 
-        // 5. Рендеринг.
+        // 5. Рендеринг. Камера ставится до мыши (D-39: она появится в `T-TDS-4`), чтобы прицеливание
+        //    с самого начала работало в мировых координатах, а не было отлажено задним числом.
+        let screen_size = vec2(SCREEN_WIDTH, SCREEN_HEIGHT);
+        let center = camera::camera_center(player.position, arena, screen_size);
+        set_camera(&Camera2D {
+            target: center,
+            zoom: vec2(2.0 / screen_size.x, -2.0 / screen_size.y),
+            ..Default::default()
+        });
         draw_arena(arena);
         draw_player(&player);
+        set_default_camera();
 
         // 6. Следующий кадр.
         next_frame().await;
