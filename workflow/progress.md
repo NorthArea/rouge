@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-13
 LAST_COMPLETED_TASK: T-AST-12
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: c88a1f6/T-AST-11
+LAST_CHECKPOINT: bdfa037/T-AST-12
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-13 (аудит покрытия D-26, аудит простоты, полный гейт, чек-лист приёмки первой версии; специальный gate — наблюдаемый прогон по чек-листу, откладывается по решению владельца до завершения очереди).
 
 ## Реестр статусов задач
