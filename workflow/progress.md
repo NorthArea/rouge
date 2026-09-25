@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-6
 LAST_COMPLETED_TASK: T-AST-5
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 8f6c4e6/T-AST-4
+LAST_CHECKPOINT: 598ab1f/T-AST-5
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-6 (астероиды: `Vec<Asteroid>`, `enum AsteroidSize`, движение, wrapping, детерминированная раскладка волны).
 
 ## Реестр статусов задач
