@@ -7,3 +7,4 @@ edition = "2021"
 macroquad = "0.4.16"
 pong = { path = "../pong" }
 arkanoid = { path = "../arkanoid" }
+asteroids = { path = "../asteroids" }

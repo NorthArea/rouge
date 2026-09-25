@@ -199,6 +199,7 @@ name = "menu"
 version = "0.1.0"
 dependencies = [
  "arkanoid",
+ "asteroids",
  "macroquad",
  "pong",
 ]

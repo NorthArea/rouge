@@ -24,6 +24,7 @@ cargo run
 ```text
 cargo run -p pong
 cargo run -p arkanoid
+cargo run -p asteroids
 ```
 
 ## Игры
@@ -32,6 +33,6 @@ cargo run -p arkanoid
 |---|---|---|
 | Game 01 — Pong | [`pong/`](pong/README.md) | завершена и принята |
 | Game 02 — Arkanoid | [`arkanoid/`](arkanoid/README.md) | завершена |
-| Game 03 — Asteroids | — | не начата |
+| Game 03 — Asteroids | [`asteroids/`](asteroids/) | в разработке |
 
 Объяснение игры и разобранных в ней концепций лежит в README самой игры.
