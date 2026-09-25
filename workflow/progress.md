@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-10
 LAST_COMPLETED_TASK: T-AST-9
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 7ea5d6c/T-AST-8
+LAST_CHECKPOINT: a21dbc4/T-AST-9
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-10 (UI: Score, Lives, Wave, сообщения состояний; простой эффект разрушения астероида).
 
 ## Реестр статусов задач
