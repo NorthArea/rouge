@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-11
 LAST_COMPLETED_TASK: T-ROOM-10
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-10
+LAST_CHECKPOINT: b53c6af/T-ROOM-10
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-11 (room/README.md по пунктам задания: Vec3, мировые оси, local/world, transform, yaw/pitch, перспектива, FOV, гравитация, collider).
 
 ## Реестр статусов задач
