@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-4
 LAST_COMPLETED_TASK: T-ROOM-3
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-3
+LAST_CHECKPOINT: 4e41494/T-ROOM-3
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-4 (единая функция yaw → forward/right; W/A/S/D двигают игрока по полу через delta time, диагональ нормализована).
 
 ## Реестр статусов задач
