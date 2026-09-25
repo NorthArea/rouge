@@ -6,14 +6,15 @@ mod camera;
 mod collision;
 mod combat;
 mod enemy;
+mod game;
 mod player;
 mod score;
 
 use arena::Arena;
 use bullet::Bullet;
 use enemy::Enemy;
+use game::{Game, Input};
 use player::Player;
-use score::Score;
 
 /// Цвет врага — другой, чтобы он отличался от игрока и пуль на глаз.
 const ENEMY_COLOR: Color = Color::new(0.85, 0.25, 0.25, 1.0);
@@ -37,11 +38,7 @@ const ARENA_HEIGHT: f32 = 1200.0;
 
 pub async fn run() {
     let arena = Arena::new(ARENA_WIDTH, ARENA_HEIGHT);
-    let mut player = Player::new(vec2(arena.width / 2.0, arena.height / 2.0));
-    let mut bullets: Vec<Bullet> = Vec::new();
-    let mut shoot_cooldown = 0.0;
-    let mut enemies: Vec<Enemy> = enemy::spawn_wave(1, arena, player.position);
-    let mut score = Score::new();
+    let mut game = Game::new(arena);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке (D-09) — порядок стадий
@@ -52,41 +49,38 @@ pub async fn run() {
         if is_key_pressed(KeyCode::Escape) {
             break;
         }
+        if is_key_pressed(KeyCode::R) {
+            game.restart();
+        }
         let up = is_key_down(KeyCode::W);
         let down = is_key_down(KeyCode::S);
         let left = is_key_down(KeyCode::A);
         let right = is_key_down(KeyCode::D);
         let fire = is_mouse_button_down(MouseButton::Left);
+        let space_pressed = is_key_pressed(KeyCode::Space);
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
 
         // 3. Обновление состояния. Камера считается здесь же, а не только в рендеринге: прицеливание
         //    нуждается в том же центре камеры, что и отрисовка, иначе курсор и то, что видит игрок,
-        //    разойдутся (D-39).
-        player.update(up, down, left, right, delta_time);
-        player.clamp_to_arena(arena);
+        //    разойдутся (D-39). Переходы состояний и вся игровая логика кадра — внутри `Game::update`.
         let screen_size = vec2(SCREEN_WIDTH, SCREEN_HEIGHT);
-        let center = camera::camera_center(player.position, arena, screen_size);
+        let center = camera::camera_center(game.player.position, arena, screen_size);
         let (mouse_x, mouse_y) = mouse_position();
         let cursor_world = camera::screen_to_world(vec2(mouse_x, mouse_y), center, screen_size);
-        player.aim_at(cursor_world);
-        bullet::tick_cooldown(&mut shoot_cooldown, delta_time);
-        if fire {
-            if let Some(new_bullet) = bullet::shoot(&mut shoot_cooldown, &player) {
-                bullets.push(new_bullet);
-            }
-        }
-        for bullet in &mut bullets {
-            bullet.advance(delta_time);
-        }
-        bullet::remove_expired(&mut bullets, arena);
-        for enemy in &mut enemies {
-            enemy.chase(player.position, delta_time);
-        }
+        let input = Input {
+            up,
+            down,
+            left,
+            right,
+            fire,
+            cursor_world,
+            space_pressed,
+        };
+        game.update(&input, delta_time);
 
-        // 4. Проверка столкновений.
-        combat::resolve(&mut bullets, &mut enemies, &mut score);
+        // 4. Проверка столкновений — уже выполнена внутри `Game::update`.
 
         // 5. Рендеринг.
         set_camera(&Camera2D {
@@ -95,11 +89,11 @@ pub async fn run() {
             ..Default::default()
         });
         draw_arena(arena);
-        draw_player(&player);
-        for bullet in &bullets {
+        draw_player(&game.player);
+        for bullet in &game.bullets {
             draw_bullet(bullet);
         }
-        for enemy in &enemies {
+        for enemy in &game.enemies {
             draw_enemy(enemy);
         }
         set_default_camera();
