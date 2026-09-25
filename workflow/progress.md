@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-12
 LAST_COMPLETED_TASK: T-ROOM-11
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-11
+LAST_CHECKPOINT: 3a4a6d4/T-ROOM-11
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-12 (аудит покрытия D-45, аудит простоты, полный гейт, чек-лист приёмки первой версии Game 05; последняя позиция очереди).
 
 ## Реестр статусов задач
