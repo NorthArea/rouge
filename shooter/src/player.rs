@@ -6,6 +6,9 @@ use crate::arena::Arena;
 const PLAYER_SPEED: f32 = 250.0;
 /// Радиус столкновения игрока.
 pub const PLAYER_RADIUS: f32 = 16.0;
+/// Расстояние от края игрока до дульного среза — общее для отрисовки ствола и точки спавна пули,
+/// чтобы обе точки не могли разойтись.
+const BARREL_LENGTH: f32 = 14.0;
 
 pub struct Player {
     pub position: Vec2,
@@ -29,6 +32,12 @@ impl Player {
     /// направление выстрела.
     pub fn facing(&self) -> Vec2 {
         Vec2::from_angle(self.aim_angle)
+    }
+
+    /// Точка у дульного среза в мировых координатах — место появления пули (`T-TDS-5`) и отрисовки
+    /// ствола (`T-TDS-4`), выраженные одной точкой, чтобы они не могли разойтись.
+    pub fn barrel_position(&self) -> Vec2 {
+        self.position + self.facing() * (self.radius + BARREL_LENGTH)
     }
 
     /// Поворот игрока к курсору. `direction`, `normalized_direction` и `angle` названы отдельно, как

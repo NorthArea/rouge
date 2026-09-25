@@ -1,10 +1,12 @@
 use macroquad::prelude::*;
 
 mod arena;
+mod bullet;
 mod camera;
 mod player;
 
 use arena::Arena;
+use bullet::Bullet;
 use player::Player;
 
 /// Размер окна, тот же, что в `window_conf` (`main.rs`). Используется камерой, чтобы вычислить, какая
@@ -27,6 +29,8 @@ const ARENA_HEIGHT: f32 = 1200.0;
 pub async fn run() {
     let arena = Arena::new(ARENA_WIDTH, ARENA_HEIGHT);
     let mut player = Player::new(vec2(arena.width / 2.0, arena.height / 2.0));
+    let mut bullets: Vec<Bullet> = Vec::new();
+    let mut shoot_cooldown = 0.0;
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке (D-09) — порядок стадий
@@ -41,6 +45,7 @@ pub async fn run() {
         let down = is_key_down(KeyCode::S);
         let left = is_key_down(KeyCode::A);
         let right = is_key_down(KeyCode::D);
+        let fire = is_mouse_button_down(MouseButton::Left);
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
@@ -55,6 +60,16 @@ pub async fn run() {
         let (mouse_x, mouse_y) = mouse_position();
         let cursor_world = camera::screen_to_world(vec2(mouse_x, mouse_y), center, screen_size);
         player.aim_at(cursor_world);
+        bullet::tick_cooldown(&mut shoot_cooldown, delta_time);
+        if fire {
+            if let Some(new_bullet) = bullet::shoot(&mut shoot_cooldown, &player) {
+                bullets.push(new_bullet);
+            }
+        }
+        for bullet in &mut bullets {
+            bullet.advance(delta_time);
+        }
+        bullet::remove_expired(&mut bullets, arena);
 
         // 4. Проверка столкновений. Пока нечего проверять.
 
@@ -66,11 +81,25 @@ pub async fn run() {
         });
         draw_arena(arena);
         draw_player(&player);
+        for bullet in &bullets {
+            draw_bullet(bullet);
+        }
         set_default_camera();
 
         // 6. Следующий кадр.
         next_frame().await;
     }
+}
+
+/// Кругом — та же форма, что у столкновений D-38, а не квадрат, как в Pong/Arkanoid/Asteroids: у
+/// Shooter все подвижные объекты рисуются кругами (D-38).
+fn draw_bullet(bullet: &Bullet) {
+    draw_circle(
+        bullet.position.x,
+        bullet.position.y,
+        bullet::BULLET_RADIUS,
+        ARENA_COLOR,
+    );
 }
 
 fn draw_arena(arena: Arena) {
@@ -97,7 +126,7 @@ fn draw_player(player: &Player) {
         ARENA_COLOR,
     );
     draw_circle(player.position.x, player.position.y, 2.0, ARENA_COLOR);
-    let barrel_tip = player.position + player.facing() * (player.radius + 14.0);
+    let barrel_tip = player.barrel_position();
     draw_line(
         player.position.x,
         player.position.y,
