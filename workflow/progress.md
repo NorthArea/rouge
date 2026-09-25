@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-9
 LAST_COMPLETED_TASK: T-AST-8
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 8123feb/T-AST-7
+LAST_CHECKPOINT: 7ea5d6c/T-AST-8
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-9 (волны: завершение волны, следующая волна с большей сложностью, номер волны, сохранение счёта и жизней).
 
 ## Реестр статусов задач
