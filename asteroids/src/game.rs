@@ -15,25 +15,17 @@ const RESPAWN_DELAY: f32 = 2.0;
 /// Неуязвимость после respawn, секунд.
 const INVULNERABILITY_DURATION: f32 = 2.0;
 
-/// `WaveCompleted` здесь не объявлен: у него не было бы потребителя до `T-AST-9` (первый потребитель —
-/// завершение волны), а необъявленный вариант — dead code под `-D warnings` (тот же случай, что
-/// `LevelCompleted` в `T-ARK-7`).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameState {
     WaitingToStart,
     Playing,
     PlayerDestroyed,
+    WaveCompleted,
     GameOver,
 }
 
 /// Ровно четыре таймера во всей игре (D-29): cooldown выстрела и lifetime пули (в `Bullet`/`Weapon`,
 /// `T-AST-5`), пауза перед respawn и неуязвимость (здесь, поля `f32`, убывающие на `delta_time`).
-///
-/// **Решение по scope, принятое при реализации `T-AST-8`** (тот же приём, что для `velocity`
-/// корабля на `T-AST-2`, `AsteroidSize` на `T-AST-6`/`T-AST-7` и `Score::value` здесь же): номер
-/// волны не хранится полем `Game` — читать и увеличивать его начинает только завершение волны
-/// (`T-AST-9`), а поле без чтения вне теста — `-D dead-code` под `cargo build --workspace`. Волна
-/// пока живёт неявно: `spawn_wave(1, field)` — единственный вызов, и он уже есть в `T-AST-6`.
 pub struct Game {
     pub field: Field,
     pub ship: Ship,
@@ -42,6 +34,7 @@ pub struct Game {
     pub asteroids: Vec<Asteroid>,
     pub score: Score,
     pub lives: u32,
+    pub wave: u32,
     pub state: GameState,
     respawn_timer: f32,
     invulnerability_timer: f32,
@@ -57,6 +50,7 @@ impl Game {
             asteroids: asteroid::spawn_wave(1, field),
             score: Score::new(),
             lives: LIVES,
+            wave: 1,
             state: GameState::WaitingToStart,
             respawn_timer: 0.0,
             invulnerability_timer: 0.0,
@@ -99,6 +93,12 @@ impl Game {
                     self.state = GameState::Playing;
                 }
             }
+            GameState::WaveCompleted => {
+                if space_pressed {
+                    self.advance_wave();
+                }
+                self.update_ship(turn, thrusting, delta_time);
+            }
             GameState::GameOver => unreachable!("обработан выше отдельным `return`"),
         }
 
@@ -116,6 +116,19 @@ impl Game {
         if self.state == GameState::Playing {
             self.check_ship_collision();
         }
+        // Пули с прошлой волны снимаются здесь же, в кадре, где астероиды опустели.
+        if self.state == GameState::Playing && self.asteroids.is_empty() {
+            self.bullets.clear();
+            self.state = GameState::WaveCompleted;
+        }
+    }
+
+    /// Следующая волна: номер растёт, счёт и жизни не трогаются — они не поля волны, а поля матча.
+    fn advance_wave(&mut self) {
+        self.wave += 1;
+        self.asteroids = asteroid::spawn_wave(self.wave, self.field);
+        self.bullets.clear();
+        self.state = GameState::Playing;
     }
 
     fn update_ship(&mut self, turn: f32, thrusting: bool, delta_time: f32) {
@@ -382,6 +395,95 @@ mod tests {
             (game.ship.position - expected_center).length() < TOLERANCE,
             "корабль после рестарта не в центре: {:?}",
             game.ship.position
+        );
+    }
+
+    #[test]
+    fn destroying_the_last_asteroid_completes_the_wave() {
+        let mut game = Game::new(field());
+        game.state = GameState::Playing;
+        game.asteroids = vec![]; // последний астероид уже уничтожен предыдущим кадром
+
+        game.update(0.0, false, false, 1.0 / 60.0);
+
+        assert_eq!(
+            game.state,
+            GameState::WaveCompleted,
+            "опустевшая коллекция не завершила волну: состояние {:?}",
+            game.state
+        );
+    }
+
+    #[test]
+    fn the_wave_does_not_end_while_an_asteroid_remains() {
+        let mut game = Game::new(field());
+        game.state = GameState::Playing;
+        game.asteroids = vec![stationary_asteroid_at(vec2(500.0, 500.0))];
+
+        game.update(0.0, false, false, 1.0 / 60.0);
+
+        assert_eq!(
+            game.state,
+            GameState::Playing,
+            "волна завершилась при оставшемся астероиде: состояние {:?}",
+            game.state
+        );
+    }
+
+    #[test]
+    fn the_next_wave_increases_the_wave_number() {
+        let mut game = Game::new(field());
+        game.state = GameState::WaveCompleted;
+        let wave_before = game.wave;
+
+        game.update(0.0, false, true, 1.0 / 60.0);
+
+        assert_eq!(
+            game.wave,
+            wave_before + 1,
+            "номер волны после перехода — {}, ожидалось {}",
+            game.wave,
+            wave_before + 1
+        );
+    }
+
+    #[test]
+    fn the_next_wave_has_more_large_asteroids_than_the_previous_one() {
+        let mut game = Game::new(field());
+        let first_wave_count = game.asteroids.len();
+        game.state = GameState::WaveCompleted;
+
+        game.update(0.0, false, true, 1.0 / 60.0);
+
+        assert!(
+            game.asteroids.len() > first_wave_count,
+            "следующая волна дала {} астероидов, предыдущая — {}",
+            game.asteroids.len(),
+            first_wave_count
+        );
+    }
+
+    #[test]
+    fn advancing_to_the_next_wave_keeps_the_score_and_lives() {
+        let mut game = Game::new(field());
+        game.state = GameState::WaveCompleted;
+        game.score.add(500);
+        game.lives = 2;
+
+        game.update(0.0, false, true, 1.0 / 60.0);
+
+        assert_eq!(game.lives, 2, "жизни после перехода волны — {}", game.lives);
+        assert_eq!(
+            game.score.value(),
+            500,
+            "счёт после перехода волны — {}",
+            game.score.value()
+        );
+        assert_eq!(
+            game.state,
+            GameState::Playing,
+            "переход волны не вернул игру в Playing: состояние {:?}",
+            game.state
         );
     }
 }

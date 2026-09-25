@@ -2,8 +2,10 @@ use macroquad::prelude::*;
 
 use crate::Field;
 
-/// Число крупных астероидов первой волны. Рост между волнами — `T-AST-9`.
+/// Число крупных астероидов первой волны.
 const START_ASTEROIDS: u32 = 4;
+/// Потолок числа крупных астероидов волны, чтобы поздние волны не превращались в кашу.
+const MAX_WAVE_ASTEROIDS: u32 = 12;
 /// Минимальное расстояние от центра поля (стартовой позиции корабля) до центра заспавненного
 /// астероида: сумма примерного радиуса корабля, радиуса `Large` и запаса, чтобы волна не убивала
 /// игрока в момент старта. Радиус столкновения корабля появится только в `T-AST-8` (D-27), поэтому
@@ -106,7 +108,7 @@ impl Asteroid {
 /// (`T-AST-9`) не ложились ровно поверх предыдущей раскладки.
 pub fn spawn_wave(wave: u32, field: Field) -> Vec<Asteroid> {
     let center = vec2(field.width / 2.0, field.height / 2.0);
-    let count = START_ASTEROIDS;
+    let count = (START_ASTEROIDS + wave.saturating_sub(1)).min(MAX_WAVE_ASTEROIDS);
     let ring_radius = MIN_SPAWN_DISTANCE + 60.0;
     let wave_offset = (wave.saturating_sub(1)) as f32 * std::f32::consts::FRAC_PI_6;
 
@@ -198,6 +200,31 @@ mod tests {
         assert!(
             wave.iter().all(|a| a.size == AsteroidSize::Large),
             "не все астероиды первой волны — Large"
+        );
+    }
+
+    #[test]
+    fn a_later_wave_has_more_large_asteroids_than_the_first() {
+        let first = spawn_wave(1, field());
+        let later = spawn_wave(3, field());
+
+        assert!(
+            later.len() > first.len(),
+            "волна 3 дала {} астероидов, волна 1 — {}, ожидался рост",
+            later.len(),
+            first.len()
+        );
+    }
+
+    #[test]
+    fn wave_asteroid_count_never_exceeds_the_cap() {
+        let far_wave = spawn_wave(50, field());
+
+        assert!(
+            far_wave.len() as u32 <= MAX_WAVE_ASTEROIDS,
+            "волна 50 дала {} астероидов, потолок {}",
+            far_wave.len(),
+            MAX_WAVE_ASTEROIDS
         );
     }
 
