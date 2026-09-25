@@ -1,3 +1,5 @@
+use macroquad::prelude::Vec2;
+
 use crate::bullet::{Bullet, BULLET_RADIUS};
 use crate::collision;
 use crate::enemy::Enemy;
@@ -11,7 +13,11 @@ const ENEMY_KILL_POINTS: u32 = 10;
 /// Попадания пуль по врагам за кадр. Каждая пуля обрабатывается не более одного раза (`consumed`) —
 /// пуля, уже попавшая в одного врага, не проверяется против следующих; уже погибший в этом же кадре
 /// враг не обрабатывается повторно, потому что удаляется из коллекции только один раз, в конце.
-pub fn resolve(bullets: &mut Vec<Bullet>, enemies: &mut Vec<Enemy>, score: &mut Score) {
+pub fn resolve(
+    bullets: &mut Vec<Bullet>,
+    enemies: &mut Vec<Enemy>,
+    score: &mut Score,
+) -> Vec<Vec2> {
     let mut consumed = vec![false; bullets.len()];
 
     for enemy in enemies.iter_mut() {
@@ -32,19 +38,21 @@ pub fn resolve(bullets: &mut Vec<Bullet>, enemies: &mut Vec<Enemy>, score: &mut 
         }
     }
 
-    let mut destroyed = 0u32;
+    let mut destroyed_positions = Vec::new();
     enemies.retain(|enemy| {
         if enemy.health <= 0 {
-            destroyed += 1;
+            destroyed_positions.push(enemy.position);
             false
         } else {
             true
         }
     });
-    score.add(destroyed * ENEMY_KILL_POINTS);
+    score.add(destroyed_positions.len() as u32 * ENEMY_KILL_POINTS);
 
     let mut consumed_iter = consumed.into_iter();
     bullets.retain(|_| !consumed_iter.next().unwrap());
+
+    destroyed_positions
 }
 
 #[cfg(test)]
@@ -150,6 +158,38 @@ mod tests {
         assert_eq!(
             enemies[0].health, health_after_first_frame,
             "удалённая пуля нанесла урон во втором кадре"
+        );
+    }
+
+    #[test]
+    fn a_kill_reports_the_dead_enemys_position() {
+        let mut bullets = vec![bullet_at(vec2(200.0, 300.0))];
+        let mut enemies = vec![Enemy::new(vec2(200.0, 300.0))];
+        enemies[0].health = 1; // одно попадание убивает
+        let mut score = Score::new();
+
+        let destroyed_positions = resolve(&mut bullets, &mut enemies, &mut score);
+
+        assert_eq!(
+            destroyed_positions,
+            vec![vec2(200.0, 300.0)],
+            "позиции убитых — {:?}, ожидалась [(200, 300)]",
+            destroyed_positions
+        );
+    }
+
+    #[test]
+    fn a_frame_without_a_kill_reports_no_positions() {
+        let mut bullets: Vec<Bullet> = Vec::new();
+        let mut enemies = vec![Enemy::new(vec2(200.0, 300.0))];
+        let mut score = Score::new();
+
+        let destroyed_positions = resolve(&mut bullets, &mut enemies, &mut score);
+
+        assert!(
+            destroyed_positions.is_empty(),
+            "кадр без убийств сообщил позиции: {:?}",
+            destroyed_positions
         );
     }
 

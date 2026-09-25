@@ -7,6 +7,7 @@ mod collision;
 mod combat;
 mod enemy;
 mod game;
+mod pickup;
 mod player;
 mod score;
 
@@ -14,10 +15,14 @@ use arena::Arena;
 use bullet::Bullet;
 use enemy::Enemy;
 use game::{Game, Input};
+use pickup::{Pickup, PickupKind};
 use player::Player;
 
 /// Цвет врага — другой, чтобы он отличался от игрока и пуль на глаз.
 const ENEMY_COLOR: Color = Color::new(0.85, 0.25, 0.25, 1.0);
+/// Цвета pickup: разные для здоровья и патронов, чтобы игрок различал их издалека.
+const HEALTH_PICKUP_COLOR: Color = Color::new(0.3, 0.85, 0.4, 1.0);
+const AMMO_PICKUP_COLOR: Color = Color::new(0.9, 0.8, 0.2, 1.0);
 
 /// Размер окна, тот же, что в `window_conf` (`main.rs`). Используется камерой, чтобы вычислить, какая
 /// часть арены видна, поэтому число не может разойтись с настройками окна незаметно.
@@ -96,6 +101,9 @@ pub async fn run() {
         for enemy in &game.enemies {
             draw_enemy(enemy);
         }
+        for pickup in &game.pickups {
+            draw_pickup(pickup);
+        }
         set_default_camera();
 
         // 6. Следующий кадр.
@@ -122,6 +130,15 @@ fn draw_enemy(enemy: &Enemy) {
         enemy.radius,
         ENEMY_COLOR,
     );
+}
+
+/// Кругом, цвет зависит от вида pickup.
+fn draw_pickup(pickup: &Pickup) {
+    let color = match pickup.kind {
+        PickupKind::Health => HEALTH_PICKUP_COLOR,
+        PickupKind::Ammo => AMMO_PICKUP_COLOR,
+    };
+    draw_circle(pickup.position.x, pickup.position.y, pickup.radius, color);
 }
 
 fn draw_arena(arena: Arena) {

@@ -4,6 +4,7 @@ use crate::bullet::{self, Bullet};
 use crate::collision;
 use crate::combat;
 use crate::enemy::{self, Enemy};
+use crate::pickup::{self, Pickup};
 use crate::player::Player;
 use crate::score::Score;
 use crate::Arena;
@@ -50,6 +51,8 @@ pub struct Game {
     pub health: i32,
     invulnerability_timer: f32,
     pub ammo: i32,
+    pub pickups: Vec<Pickup>,
+    kills: u32,
     /// Первый потребитель вне тестов — волны (`T-TDS-11`).
     #[allow(dead_code)]
     pub wave: u32,
@@ -70,6 +73,8 @@ impl Game {
             health: PLAYER_MAX_HEALTH,
             invulnerability_timer: 0.0,
             ammo: START_AMMO,
+            pickups: Vec::new(),
+            kills: 0,
             wave: 1,
         }
     }
@@ -106,7 +111,26 @@ impl Game {
                 for enemy in &mut self.enemies {
                     enemy.chase(self.player.position, delta_time);
                 }
-                combat::resolve(&mut self.bullets, &mut self.enemies, &mut self.score);
+                let destroyed_positions =
+                    combat::resolve(&mut self.bullets, &mut self.enemies, &mut self.score);
+                for position in destroyed_positions {
+                    self.kills += 1;
+                    if let Some(kind) = pickup::pickup_for_kill(self.kills) {
+                        self.pickups.push(Pickup::new(position, kind));
+                    }
+                }
+                for pickup in &mut self.pickups {
+                    pickup.tick(delta_time);
+                }
+                pickup::remove_expired(&mut self.pickups);
+                pickup::resolve(
+                    &mut self.pickups,
+                    self.player.position,
+                    self.player.radius,
+                    &mut self.health,
+                    PLAYER_MAX_HEALTH,
+                    &mut self.ammo,
+                );
                 tick(&mut self.invulnerability_timer, delta_time);
                 self.check_player_collision();
             }
@@ -390,6 +414,46 @@ mod tests {
             game.bullets.len(),
             1,
             "выстрел при нуле патронов после последнего создал вторую пулю"
+        );
+    }
+
+    #[test]
+    fn the_fourth_kill_leaves_a_pickup_at_the_dead_enemys_position() {
+        let mut game = playing_game();
+        // Разные позиции на каждой итерации, чтобы проверка не могла случайно совпасть с pickup от
+        // более раннего убийства (второе убийство тоже даёт pickup — `Ammo`, D-37).
+        let kill_positions: [Vec2; 4] = [
+            vec2(200.0, 200.0),
+            vec2(300.0, 200.0),
+            vec2(400.0, 200.0),
+            vec2(500.0, 200.0),
+        ];
+
+        for kill_position in kill_positions {
+            game.enemies = vec![Enemy::new(kill_position)];
+            game.enemies[0].health = 1; // одно попадание убивает
+            game.bullets = vec![Bullet::new(kill_position, Vec2::X)];
+            game.update(&still_input(), 1.0 / 60.0);
+        }
+
+        let health_pickups: Vec<_> = game
+            .pickups
+            .iter()
+            .filter(|pickup| pickup.kind == pickup::PickupKind::Health)
+            .collect();
+        assert_eq!(
+            health_pickups.len(),
+            1,
+            "pickups вида Health после четырёх убийств: {}, ожидался 1",
+            health_pickups.len()
+        );
+        // Допуск больше обычного: враг успевает сделать шаг chase AI в том же кадре, где его убивает
+        // пуля (`chase` идёт раньше `combat::resolve` в `Game::update`).
+        assert!(
+            (health_pickups[0].position - kill_positions[3]).length() < 5.0,
+            "pickup появился в {:?}, ожидалась позиция четвёртого убитого врага {:?}",
+            health_pickups[0].position,
+            kill_positions[3]
         );
     }
 }
