@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-10
 LAST_COMPLETED_TASK: T-ROOM-9
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-9
+LAST_CHECKPOINT: 6ba06da/T-ROOM-9
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-10 (пункт ROOM в общем меню: зависимость menu/Cargo.toml, шестой пункт, кадр возврата, корневой README.md); объявить специальный gate (наблюдаемый прогон cargo run — меню → ROOM → меню) и пропустить его по решению управляющего 2026-09-25, отложить до конца очереди Game 05.
 
 ## Реестр статусов задач
