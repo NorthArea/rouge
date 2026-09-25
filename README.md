@@ -26,6 +26,7 @@ cargo run -p pong
 cargo run -p arkanoid
 cargo run -p asteroids
 cargo run -p shooter
+cargo run -p room
 ```
 
 ## Игры
@@ -36,5 +37,6 @@ cargo run -p shooter
 | Game 02 — Arkanoid | [`arkanoid/`](arkanoid/README.md) | завершена |
 | Game 03 — Asteroids | [`asteroids/`](asteroids/README.md) | завершена и принята |
 | Game 04 — Top-down Shooter | [`shooter/`](shooter/) | в разработке |
+| Game 05 — 3D Room | [`room/`](room/) | в разработке |
 
 Объяснение игры и разобранных в ней концепций лежит в README самой игры.

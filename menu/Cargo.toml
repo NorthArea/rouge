@@ -9,3 +9,4 @@ pong = { path = "../pong" }
 arkanoid = { path = "../arkanoid" }
 asteroids = { path = "../asteroids" }
 shooter = { path = "../shooter" }
+room = { path = "../room" }

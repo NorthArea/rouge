@@ -87,6 +87,12 @@ async fn main() {
                     next_frame().await;
                     continue;
                 }
+                MenuItem::Room => {
+                    room::run().await;
+                    // Та же ловушка кадра возврата (D-23), что у четырёх предыдущих игр.
+                    next_frame().await;
+                    continue;
+                }
                 MenuItem::Quit => break,
             }
         }

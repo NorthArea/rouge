@@ -5,14 +5,16 @@ pub enum MenuItem {
     Arkanoid,
     Asteroids,
     Shooter,
+    Room,
     Quit,
 }
 
-pub const ITEMS: [MenuItem; 5] = [
+pub const ITEMS: [MenuItem; 6] = [
     MenuItem::Pong,
     MenuItem::Arkanoid,
     MenuItem::Asteroids,
     MenuItem::Shooter,
+    MenuItem::Room,
     MenuItem::Quit,
 ];
 
@@ -25,6 +27,7 @@ impl MenuItem {
             MenuItem::Arkanoid => "ARKANOID",
             MenuItem::Asteroids => "ASTEROIDS",
             MenuItem::Shooter => "SHOOTER",
+            MenuItem::Room => "ROOM",
             MenuItem::Quit => "QUIT",
         }
     }
@@ -152,6 +155,7 @@ mod tests {
         selection.move_down();
         selection.move_down();
         selection.move_down();
+        selection.move_down();
 
         assert_eq!(
             selection.confirm(),
@@ -179,6 +183,7 @@ mod tests {
         assert_eq!(MenuItem::Arkanoid.label(), "ARKANOID");
         assert_eq!(MenuItem::Asteroids.label(), "ASTEROIDS");
         assert_eq!(MenuItem::Shooter.label(), "SHOOTER");
+        assert_eq!(MenuItem::Room.label(), "ROOM");
         assert_eq!(MenuItem::Quit.label(), "QUIT");
     }
 
@@ -207,6 +212,22 @@ mod tests {
             selection.confirm(),
             MenuItem::Shooter,
             "подтверждение после трёх move_down вернуло {:?}, ожидалось Shooter",
+            selection.confirm()
+        );
+    }
+
+    #[test]
+    fn moving_down_four_items_points_at_room() {
+        let mut selection = Selection::new();
+        selection.move_down();
+        selection.move_down();
+        selection.move_down();
+        selection.move_down();
+
+        assert_eq!(
+            selection.confirm(),
+            MenuItem::Room,
+            "подтверждение после четырёх move_down вернуло {:?}, ожидалось Room",
             selection.confirm()
         );
     }
