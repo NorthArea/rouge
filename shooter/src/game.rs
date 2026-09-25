@@ -19,12 +19,12 @@ const INVULNERABILITY_DURATION: f32 = 1.0;
 /// непрерывной стрельбы, чтобы расход до нуля укладывался в один сеанс игры в несколько минут.
 const START_AMMO: i32 = 40;
 
-/// Простой `enum` без state-machine framework (прямое требование задания). `WaveCompleted`
-/// добавляется на `T-TDS-11`, когда для него появится поведение.
+/// Простой `enum` без state-machine framework (прямое требование задания).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameState {
     WaitingToStart,
     Playing,
+    WaveCompleted,
     GameOver,
 }
 
@@ -53,8 +53,6 @@ pub struct Game {
     pub ammo: i32,
     pub pickups: Vec<Pickup>,
     kills: u32,
-    /// Первый потребитель вне тестов — волны (`T-TDS-11`).
-    #[allow(dead_code)]
     pub wave: u32,
 }
 
@@ -111,6 +109,12 @@ impl Game {
                 for enemy in &mut self.enemies {
                     enemy.chase(self.player.position, delta_time);
                 }
+                // Контактный урон проверяется до `combat::resolve`, на ещё не уменьшенной коллекции
+                // врагов: враг, который в этом же кадре умрёт от пули, успевает нанести касание —
+                // GameOver из-за этого урона решается раньше, чем опустевшая коллекция могла бы
+                // переключить игру в WaveCompleted (см. проверку ниже).
+                tick(&mut self.invulnerability_timer, delta_time);
+                self.check_player_collision();
                 let destroyed_positions =
                     combat::resolve(&mut self.bullets, &mut self.enemies, &mut self.score);
                 for position in destroyed_positions {
@@ -131,11 +135,31 @@ impl Game {
                     PLAYER_MAX_HEALTH,
                     &mut self.ammo,
                 );
-                tick(&mut self.invulnerability_timer, delta_time);
-                self.check_player_collision();
+                // Проверяется последней: если касание того же кадра уже перевело игру в `GameOver`,
+                // опустевшая после `combat::resolve` коллекция врагов не переводит её ещё и в
+                // `WaveCompleted` — `GameOver` побеждает, потому что `self.state` уже не `Playing`.
+                if self.state == GameState::Playing && self.enemies.is_empty() {
+                    self.bullets.clear();
+                    self.state = GameState::WaveCompleted;
+                }
+            }
+            GameState::WaveCompleted => {
+                if input.space_pressed {
+                    self.advance_wave();
+                }
+                self.update_player(input, delta_time);
             }
             GameState::GameOver => unreachable!("обработан выше отдельным `return`"),
         }
+    }
+
+    /// Следующая волна: номер растёт, `enemy::spawn_wave` с новым номером даёт больше врагов
+    /// (`enemy::enemy_count`), счёт/здоровье/патроны не трогаются — это поля матча, а не волны.
+    fn advance_wave(&mut self) {
+        self.wave += 1;
+        self.enemies = enemy::spawn_wave(self.wave, self.arena, self.player.position);
+        self.bullets.clear();
+        self.state = GameState::Playing;
     }
 
     fn update_player(&mut self, input: &Input, delta_time: f32) {
@@ -220,10 +244,18 @@ mod tests {
         input
     }
 
+    fn fire_input_with_space() -> Input {
+        let mut input = still_input();
+        input.space_pressed = true;
+        input
+    }
+
     fn playing_game() -> Game {
         let mut game = Game::new(arena());
         game.state = GameState::Playing;
-        game.enemies = Vec::new(); // без врагов, чтобы контактный урон не мешал тестам боеприпасов
+        // Один далёкий враг — не касается игрока (не мешает тестам боеприпасов), но не даёт
+        // опустевшей коллекции враг случайно завершить волну (T-TDS-11).
+        game.enemies = vec![Enemy::new(vec2(10.0, 10.0))];
         game
     }
 
@@ -430,6 +462,10 @@ mod tests {
         ];
 
         for kill_position in kill_positions {
+            // Явный возврат в Playing: каждая итерация убивает единственного врага, а с T-TDS-11
+            // это само по себе завершает волну — тест здесь проверяет выпадение pickup, а не переход
+            // волны (он проверен отдельно), поэтому состояние переустанавливается вручную.
+            game.state = GameState::Playing;
             game.enemies = vec![Enemy::new(kill_position)];
             game.enemies[0].health = 1; // одно попадание убивает
             game.bullets = vec![Bullet::new(kill_position, Vec2::X)];
@@ -454,6 +490,123 @@ mod tests {
             "pickup появился в {:?}, ожидалась позиция четвёртого убитого врага {:?}",
             health_pickups[0].position,
             kill_positions[3]
+        );
+    }
+
+    #[test]
+    fn destroying_the_last_enemy_completes_the_wave() {
+        let mut game = playing_game();
+        game.enemies = Vec::new(); // последний враг уже уничтожен предыдущим кадром
+
+        game.update(&still_input(), 1.0 / 60.0);
+
+        assert_eq!(
+            game.state,
+            GameState::WaveCompleted,
+            "опустевшая коллекция не завершила волну: состояние {:?}",
+            game.state
+        );
+    }
+
+    #[test]
+    fn the_wave_does_not_end_while_an_enemy_remains() {
+        let mut game = playing_game();
+        game.enemies = vec![Enemy::new(vec2(500.0, 500.0))];
+
+        game.update(&still_input(), 1.0 / 60.0);
+
+        assert_eq!(
+            game.state,
+            GameState::Playing,
+            "волна завершилась при оставшемся враге: состояние {:?}",
+            game.state
+        );
+    }
+
+    #[test]
+    fn enemies_do_not_spawn_on_their_own_in_wave_completed() {
+        let mut game = playing_game();
+        game.state = GameState::WaveCompleted;
+        game.enemies = Vec::new();
+
+        game.update(&still_input(), 1.0 / 60.0);
+
+        assert!(
+            game.enemies.is_empty(),
+            "враги появились в WaveCompleted без подтверждения игрока"
+        );
+    }
+
+    #[test]
+    fn the_next_wave_increases_the_wave_number() {
+        let mut game = playing_game();
+        game.state = GameState::WaveCompleted;
+        let wave_before = game.wave;
+
+        game.update(&fire_input_with_space(), 1.0 / 60.0);
+
+        assert_eq!(
+            game.wave,
+            wave_before + 1,
+            "номер волны после перехода — {}, ожидалось {}",
+            game.wave,
+            wave_before + 1
+        );
+    }
+
+    #[test]
+    fn the_next_wave_has_more_enemies_than_the_previous_one() {
+        let mut game = playing_game();
+        let first_wave_count = game.enemies.len();
+        game.state = GameState::WaveCompleted;
+
+        game.update(&fire_input_with_space(), 1.0 / 60.0);
+
+        assert!(
+            game.enemies.len() > first_wave_count,
+            "следующая волна дала {} врагов, предыдущая — {}",
+            game.enemies.len(),
+            first_wave_count
+        );
+    }
+
+    #[test]
+    fn advancing_the_wave_keeps_score_health_and_ammo() {
+        let mut game = playing_game();
+        game.state = GameState::WaveCompleted;
+        game.score.add(500);
+        game.health = 40;
+        game.ammo = 7;
+
+        game.update(&fire_input_with_space(), 1.0 / 60.0);
+
+        assert_eq!(game.score.value(), 500, "счёт после перехода волны");
+        assert_eq!(game.health, 40, "здоровье после перехода волны");
+        assert_eq!(game.ammo, 7, "патроны после перехода волны");
+        assert_eq!(
+            game.state,
+            GameState::Playing,
+            "переход волны не вернул игру в Playing: состояние {:?}",
+            game.state
+        );
+    }
+
+    #[test]
+    fn game_over_at_the_same_moment_as_the_last_kill_beats_wave_completed() {
+        let mut game = playing_game();
+        game.health = CONTACT_DAMAGE; // следующее касание убивает игрока
+                                      // Единственный оставшийся враг гибнет от пули в этом же кадре и одновременно касается игрока.
+        game.enemies = vec![Enemy::new(game.player.position)];
+        game.enemies[0].health = 1;
+        game.bullets = vec![Bullet::new(game.player.position, Vec2::X)];
+
+        game.update(&still_input(), 1.0 / 60.0);
+
+        assert_eq!(
+            game.state,
+            GameState::GameOver,
+            "смерть последнего врага и урон игроку в одном кадре не дали GameOver: состояние {:?}",
+            game.state
         );
     }
 }
