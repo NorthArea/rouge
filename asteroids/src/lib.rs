@@ -1,7 +1,9 @@
 use macroquad::prelude::*;
 
+mod bullet;
 mod ship;
 
+use bullet::{Bullet, Weapon};
 use ship::Ship;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
@@ -31,6 +33,8 @@ pub async fn run() {
     // Macroquad в каждом кадре.
     let field = Field::new(screen_width(), screen_height());
     let mut ship = Ship::new(vec2(field.width / 2.0, field.height / 2.0));
+    let mut bullets: Vec<Bullet> = Vec::new();
+    let mut weapon = Weapon::new();
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -45,6 +49,9 @@ pub async fn run() {
             is_key_down(KeyCode::D) || is_key_down(KeyCode::Right),
         );
         let thrusting = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
+        // Состояний ожидания/гибели ещё нет (появятся в T-AST-8), поэтому `Space` здесь только
+        // стреляет — различение по `GameState` вводится вместе с самим состоянием.
+        let wants_to_shoot = is_key_pressed(KeyCode::Space);
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
@@ -59,6 +66,18 @@ pub async fn run() {
         ship.advance(delta_time);
         ship.wrap(field);
 
+        weapon.tick(delta_time);
+        if wants_to_shoot {
+            if let Some(bullet) = weapon.shoot(&ship) {
+                bullets.push(bullet);
+            }
+        }
+        for bullet in &mut bullets {
+            bullet.advance(delta_time);
+            bullet.wrap(field);
+        }
+        bullet::remove_expired(&mut bullets);
+
         // 4. Проверка столкновений.
         //    Появится вместе с первым другим объектом (T-AST-7).
 
@@ -67,6 +86,9 @@ pub async fn run() {
         draw_ship(&ship);
         if thrusting {
             draw_engine_flame(&ship);
+        }
+        for bullet in &bullets {
+            draw_bullet(bullet);
         }
 
         // 6. Следующий кадр.
@@ -96,6 +118,18 @@ fn draw_engine_flame(ship: &Ship) {
     let base_right = ship.position - forward * 10.0 - side * 6.0;
     let tip = ship.position - forward * 24.0;
     draw_triangle(base_left, base_right, tip, FLAME_COLOR);
+}
+
+/// Пуля рисуется квадратом по прецеденту мяча в Pong/Arkanoid (D-12).
+fn draw_bullet(bullet: &Bullet) {
+    const SIZE: f32 = 4.0;
+    draw_rectangle(
+        bullet.position.x - SIZE / 2.0,
+        bullet.position.y - SIZE / 2.0,
+        SIZE,
+        SIZE,
+        FIELD_COLOR,
+    );
 }
 
 /// `draw_rectangle_lines` рисует рамку по центру контура, поэтому её внешняя половина ушла бы
