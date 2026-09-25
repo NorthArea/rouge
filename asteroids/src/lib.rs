@@ -4,12 +4,13 @@ mod asteroid;
 mod bullet;
 mod collision;
 mod combat;
+mod game;
 mod score;
 mod ship;
 
 use asteroid::Asteroid;
-use bullet::{Bullet, Weapon};
-use score::Score;
+use bullet::Bullet;
+use game::Game;
 use ship::Ship;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
@@ -38,11 +39,7 @@ pub async fn run() {
     // Окно не изменяет размер, поэтому поле — данные, заданные один раз, а не результат опроса
     // Macroquad в каждом кадре.
     let field = Field::new(screen_width(), screen_height());
-    let mut ship = Ship::new(vec2(field.width / 2.0, field.height / 2.0));
-    let mut bullets: Vec<Bullet> = Vec::new();
-    let mut weapon = Weapon::new();
-    let mut asteroids: Vec<Asteroid> = asteroid::spawn_wave(1, field);
-    let mut score = Score::new();
+    let mut game = Game::new(field);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -52,58 +49,35 @@ pub async fn run() {
         if is_key_pressed(KeyCode::Escape) {
             break;
         }
+        if is_key_pressed(KeyCode::R) {
+            game.restart();
+        }
         let turn = ship::turn_direction(
             is_key_down(KeyCode::A) || is_key_down(KeyCode::Left),
             is_key_down(KeyCode::D) || is_key_down(KeyCode::Right),
         );
         let thrusting = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
-        // Состояний ожидания/гибели ещё нет (появятся в T-AST-8), поэтому `Space` здесь только
-        // стреляет — различение по `GameState` вводится вместе с самим состоянием.
-        let wants_to_shoot = is_key_pressed(KeyCode::Space);
+        // `Space` — одна клавиша на два намерения, различённых внутри `Game::update` по состоянию
+        // (начать раунд из `WaitingToStart` или выстрелить в `Playing`), по прецеденту `T-AST-5`.
+        let space_pressed = is_key_pressed(KeyCode::Space);
 
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
 
-        // 3. Обновление состояния.
-        ship.rotate(turn, delta_time);
-        // Тяга добавляется только пока клавиша зажата, но ограничение скорости внутри `apply_thrust`
-        // выполняется каждый кадр (см. комментарий на `Ship::apply_thrust`) — иначе кадр без тяги не
-        // проходил бы через `clamp_length_max`, а это ровно то место, которое обязано быть безопасным
-        // на нулевом векторе.
-        ship.apply_thrust(if thrusting { delta_time } else { 0.0 });
-        ship.advance(delta_time);
-        ship.wrap(field);
-
-        weapon.tick(delta_time);
-        if wants_to_shoot {
-            if let Some(bullet) = weapon.shoot(&ship) {
-                bullets.push(bullet);
-            }
-        }
-        for bullet in &mut bullets {
-            bullet.advance(delta_time);
-            bullet.wrap(field);
-        }
-        bullet::remove_expired(&mut bullets);
-        for asteroid in &mut asteroids {
-            asteroid.advance(delta_time);
-            asteroid.wrap(field);
-        }
-
-        // 4. Проверка столкновений.
-        combat::resolve(&mut bullets, &mut asteroids, &mut score);
-        //    Столкновение корабля с астероидом — T-AST-8.
+        // 3. Обновление состояния и 4. проверка столкновений — целиком внутри `Game::update`,
+        //    переходы состояний видны там одним местом.
+        game.update(turn, thrusting, space_pressed, delta_time);
 
         // 5. Рендеринг.
         draw_field(field);
-        draw_ship(&ship);
+        draw_ship(&game.ship);
         if thrusting {
-            draw_engine_flame(&ship);
+            draw_engine_flame(&game.ship);
         }
-        for bullet in &bullets {
+        for bullet in &game.bullets {
             draw_bullet(bullet);
         }
-        for asteroid in &asteroids {
+        for asteroid in &game.asteroids {
             draw_asteroid(asteroid);
         }
 

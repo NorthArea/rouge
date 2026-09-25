@@ -76,6 +76,15 @@ impl Ship {
         self.position + self.facing() * NOSE.x
     }
 
+    /// Радиус столкновения — по вписанной, а не по описанной окружности треугольника (D-27): корабль
+    /// рисуется треугольником, но сталкивается кругом, и вписанная окружность гарантирует, что круг
+    /// целиком помещается внутри рисунка, а не выступает за его нос или борта. Считается из тех же
+    /// трёх локальных точек, что `vertices()`, поэтому форма и радиус не могут разойтись; поворот и
+    /// перенос корабля не меняют вписанный радиус треугольника, поэтому мировые координаты не нужны.
+    pub fn collision_radius(&self) -> f32 {
+        inscribed_radius(NOSE, REAR_LEFT, REAR_RIGHT)
+    }
+
     /// Вершины треугольника корабля в мировых координатах, для отрисовки. Поворот local-точек
     /// собран из `facing()` (продольная ось) и перпендикуляра к нему (поперечная ось) — без
     /// повторного вызова `sin`/`cos`, чтобы тригонометрия так и осталась ровно в `facing()` (D-25).
@@ -92,6 +101,17 @@ impl Ship {
 /// скорость и низкий FPS), и при отрицательном остатке, который обычный `%` в Rust не устраняет.
 fn wrap(value: f32, size: f32) -> f32 {
     value.rem_euclid(size)
+}
+
+/// Радиус вписанной окружности треугольника `Area / semi_perimeter` — та же формула, что даёт
+/// каноническое значение для любого треугольника, а не приближение.
+fn inscribed_radius(a: Vec2, b: Vec2, c: Vec2) -> f32 {
+    let ab = (b - a).length();
+    let bc = (c - b).length();
+    let ca = (a - c).length();
+    let semi_perimeter = (ab + bc + ca) / 2.0;
+    let area = (b - a).perp_dot(c - a).abs() / 2.0;
+    area / semi_perimeter
 }
 
 /// Комбинирует одновременное удержание двух клавиш поворота в единственное направление: `-1.0` против
@@ -415,6 +435,29 @@ mod tests {
             "корабль внутри поля сместился: {:?}, ожидалось {:?}",
             ship.position,
             start
+        );
+    }
+
+    #[test]
+    fn the_collision_radius_is_not_larger_than_the_triangles_inscribed_circle() {
+        // Формула вписанной окружности для того же треугольника, посчитанная независимо от
+        // `collision_radius`, чтобы тест не был тавтологией: полупериметр и площадь по формуле Герона.
+        let a = NOSE.distance(REAR_LEFT);
+        let b = REAR_LEFT.distance(REAR_RIGHT);
+        let c = REAR_RIGHT.distance(NOSE);
+        let semi_perimeter = (a + b + c) / 2.0;
+        let area =
+            (semi_perimeter * (semi_perimeter - a) * (semi_perimeter - b) * (semi_perimeter - c))
+                .sqrt();
+        let expected_inscribed_radius = area / semi_perimeter;
+
+        let radius = ship().collision_radius();
+
+        assert!(
+            radius <= expected_inscribed_radius + TOLERANCE,
+            "радиус столкновения {} больше вписанного радиуса {}",
+            radius,
+            expected_inscribed_radius
         );
     }
 }
