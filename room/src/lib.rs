@@ -1,8 +1,10 @@
 use macroquad::prelude::*;
 
+mod input;
 mod player;
 mod room;
 
+use input::Input;
 use player::Player;
 use room::Room;
 
@@ -20,6 +22,10 @@ const EYE_HEIGHT: f32 = 1.6;
 /// локальных экранных единицах) и приращением угла в радианах. Подбирается на глаз на приёмке
 /// (D-46 прямо исключает настройку чувствительности в интерфейсе).
 const MOUSE_SENSITIVITY: f32 = 6.0;
+
+/// Скорость движения по полу, метров в секунду. Комната — 20×20, значение выбрано так, чтобы её
+/// можно было пересечь за несколько секунд (тот же ориентир, что у arena предыдущих игр).
+const MOVE_SPEED: f32 = 5.0;
 
 pub async fn run() {
     let room = Room::new();
@@ -40,14 +46,22 @@ pub async fn run() {
             show_mouse(true);
             break;
         }
-        let mouse_delta = mouse_delta_position();
+        let input = Input {
+            mouse_delta: mouse_delta_position(),
+            forward: is_key_down(KeyCode::W),
+            back: is_key_down(KeyCode::S),
+            left: is_key_down(KeyCode::A),
+            right: is_key_down(KeyCode::D),
+        };
 
-        // 2. Delta time — здесь пока не потребляется: движение по клавишам приходит на T-ROOM-4.
-        let _delta_time = get_frame_time();
+        // 2. Delta time — из него считается и движение по полу.
+        let delta_time = get_frame_time();
 
         // 3. Обновление состояния. Взгляд поворачивается прямо от смещения мыши за кадр — mouse
-        //    look не умножается на delta time, он уже per-frame величина.
-        player.look(mouse_delta, MOUSE_SENSITIVITY);
+        //    look не умножается на delta time, он уже per-frame величина; движение по полу — умножается,
+        //    иначе скорость зависела бы от частоты кадров.
+        player.look(input.mouse_delta, MOUSE_SENSITIVITY);
+        player.move_on_floor(&input, MOVE_SPEED, delta_time);
 
         // 4. Проверка столкновений — пусто: геометрия как данные для столкновений появляется на
         //    T-ROOM-7.
