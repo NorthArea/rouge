@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-7
 LAST_COMPLETED_TASK: T-AST-6
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 598ab1f/T-AST-5
+LAST_CHECKPOINT: b6c6abc/T-AST-6
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-7 (столкновение пули с астероидом, разбиение Large → Medium → Small, счёт, одно попадание — один раз).
 
 ## Реестр статусов задач
