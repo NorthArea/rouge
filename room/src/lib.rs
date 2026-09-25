@@ -92,8 +92,32 @@ pub async fn run() {
         });
         room.draw();
         set_default_camera();
+        draw_debug_overlay(&player);
 
         // 6. Следующий кадр.
         next_frame().await;
+    }
+}
+
+/// Три строки в углу: позиция и взгляд — то, ради чего задание просит overlay, «помогать изучению
+/// координат и трансформаций» (радианы этой цели не служат, поэтому углы — в градусах, `f32::to_degrees`
+/// из стандартной библиотеки). Отрисовка не тестируется (D-10); собственной функции форматирования
+/// нет — перевод радиан в градусы сводится к одному вызову встроенного метода, и заводить функцию
+/// ради теста здесь было бы абстракцией ради тестируемости, запрещённой D-03.
+const DEBUG_TEXT_COLOR: Color = Color::new(0.4, 0.95, 0.5, 1.0);
+const DEBUG_FONT_SIZE: f32 = 18.0;
+
+fn draw_debug_overlay(player: &Player) {
+    let lines = [
+        format!(
+            "pos  x={:.1} y={:.1} z={:.1}",
+            player.position.x, player.position.y, player.position.z
+        ),
+        format!("yaw   {:.1}°", player.yaw.to_degrees()),
+        format!("pitch {:.1}°", player.pitch.to_degrees()),
+    ];
+    for (line_index, line) in lines.iter().enumerate() {
+        let y = 20.0 + line_index as f32 * (DEBUG_FONT_SIZE + 4.0);
+        draw_text(line, 12.0, y, DEBUG_FONT_SIZE, DEBUG_TEXT_COLOR);
     }
 }
