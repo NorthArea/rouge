@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-8
 LAST_COMPLETED_TASK: T-ROOM-7
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-7
+LAST_CHECKPOINT: 958fe4b/T-ROOM-7
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-8 (разрешение столкновений по осям по очереди; движение по диагонали вдоль стены продолжается вдоль неё).
 
 ## Реестр статусов задач
