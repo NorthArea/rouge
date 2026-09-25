@@ -57,6 +57,7 @@ pub async fn run() {
         // на нулевом векторе.
         ship.apply_thrust(if thrusting { delta_time } else { 0.0 });
         ship.advance(delta_time);
+        ship.wrap(field);
 
         // 4. Проверка столкновений.
         //    Появится вместе с первым другим объектом (T-AST-7).

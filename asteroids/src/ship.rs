@@ -1,5 +1,7 @@
 use macroquad::prelude::*;
 
+use crate::Field;
+
 /// Скорость поворота, радиан в секунду.
 const ROTATION_SPEED: f32 = std::f32::consts::PI;
 /// Ускорение тяги, пикселей в секунду за секунду.
@@ -60,6 +62,14 @@ impl Ship {
         self.position += self.velocity * delta_time;
     }
 
+    /// Зацикленное пространство (D-28): объект существует ровно в одной точке, поэтому заворачивание
+    /// переписывает `position` напрямую, а не рисует копию у шва. `rem_euclid` даёт координату внутри
+    /// поля даже при перелёте на несколько ширин/высот поля за один кадр.
+    pub fn wrap(&mut self, field: Field) {
+        self.position.x = wrap(self.position.x, field.width);
+        self.position.y = wrap(self.position.y, field.height);
+    }
+
     /// Вершины треугольника корабля в мировых координатах, для отрисовки. Поворот local-точек
     /// собран из `facing()` (продольная ось) и перпендикуляра к нему (поперечная ось) — без
     /// повторного вызова `sin`/`cos`, чтобы тригонометрия так и осталась ровно в `facing()` (D-25).
@@ -69,6 +79,13 @@ impl Ship {
         [NOSE, REAR_LEFT, REAR_RIGHT]
             .map(|local| self.position + local.x * forward + local.y * side)
     }
+}
+
+/// Заворачивает координату в `[0, size)` через `rem_euclid` — в отличие от наивного
+/// `if x < 0.0 { x += size }`, корректно и при перелёте больше размера поля за один кадр (высокая
+/// скорость и низкий FPS), и при отрицательном остатке, который обычный `%` в Rust не устраняет.
+fn wrap(value: f32, size: f32) -> f32 {
+    value.rem_euclid(size)
 }
 
 /// Комбинирует одновременное удержание двух клавиш поворота в единственное направление: `-1.0` против
@@ -299,6 +316,97 @@ mod tests {
         assert!(
             (ship.position - start).length() < TOLERANCE,
             "неподвижный корабль без тяги сдвинулся: {:?}, ожидалось {:?}",
+            ship.position,
+            start
+        );
+    }
+
+    fn field() -> Field {
+        Field::new(960.0, 600.0)
+    }
+
+    #[test]
+    fn wrapping_past_the_left_edge_reappears_on_the_right() {
+        let mut ship = ship();
+        ship.position.x = -5.0;
+
+        ship.wrap(field());
+
+        assert!(
+            (ship.position.x - 955.0).abs() < TOLERANCE,
+            "выход за левую границу дал x = {}, ожидалось 955",
+            ship.position.x
+        );
+    }
+
+    #[test]
+    fn wrapping_past_the_right_edge_reappears_on_the_left() {
+        let mut ship = ship();
+        ship.position.x = 965.0;
+
+        ship.wrap(field());
+
+        assert!(
+            (ship.position.x - 5.0).abs() < TOLERANCE,
+            "выход за правую границу дал x = {}, ожидалось 5",
+            ship.position.x
+        );
+    }
+
+    #[test]
+    fn wrapping_past_the_top_edge_reappears_on_the_bottom() {
+        let mut ship = ship();
+        ship.position.y = -5.0;
+
+        ship.wrap(field());
+
+        assert!(
+            (ship.position.y - 595.0).abs() < TOLERANCE,
+            "выход за верхнюю границу дал y = {}, ожидалось 595",
+            ship.position.y
+        );
+    }
+
+    #[test]
+    fn wrapping_past_the_bottom_edge_reappears_on_the_top() {
+        let mut ship = ship();
+        ship.position.y = 605.0;
+
+        ship.wrap(field());
+
+        assert!(
+            (ship.position.y - 5.0).abs() < TOLERANCE,
+            "выход за нижнюю границу дал y = {}, ожидалось 5",
+            ship.position.y
+        );
+    }
+
+    #[test]
+    fn overshooting_by_several_field_widths_still_lands_inside_the_field() {
+        let mut ship = ship();
+        // Три ширины поля за один кадр — перелёт, который наивный `if x < 0.0 { x += width }` не
+        // устраняет за один шаг: он вернёт `x` в диапазон `[-width, 0)`, всё ещё вне поля.
+        ship.position.x = -3.0 * field().width + 20.0;
+
+        ship.wrap(field());
+
+        assert!(
+            (ship.position.x - 20.0).abs() < TOLERANCE,
+            "перелёт на три ширины поля дал x = {}, ожидалось 20",
+            ship.position.x
+        );
+    }
+
+    #[test]
+    fn a_ship_inside_the_field_does_not_move() {
+        let mut ship = ship();
+        let start = ship.position;
+
+        ship.wrap(field());
+
+        assert!(
+            (ship.position - start).length() < TOLERANCE,
+            "корабль внутри поля сместился: {:?}, ожидалось {:?}",
             ship.position,
             start
         );
