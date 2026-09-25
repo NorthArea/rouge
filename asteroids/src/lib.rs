@@ -1,8 +1,10 @@
 use macroquad::prelude::*;
 
+mod asteroid;
 mod bullet;
 mod ship;
 
+use asteroid::Asteroid;
 use bullet::{Bullet, Weapon};
 use ship::Ship;
 
@@ -35,6 +37,7 @@ pub async fn run() {
     let mut ship = Ship::new(vec2(field.width / 2.0, field.height / 2.0));
     let mut bullets: Vec<Bullet> = Vec::new();
     let mut weapon = Weapon::new();
+    let mut asteroids: Vec<Asteroid> = asteroid::spawn_wave(1, field);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -77,9 +80,13 @@ pub async fn run() {
             bullet.wrap(field);
         }
         bullet::remove_expired(&mut bullets);
+        for asteroid in &mut asteroids {
+            asteroid.advance(delta_time);
+            asteroid.wrap(field);
+        }
 
         // 4. Проверка столкновений.
-        //    Появится вместе с первым другим объектом (T-AST-7).
+        //    Появится вместе со столкновением пули и астероида (T-AST-7).
 
         // 5. Рендеринг.
         draw_field(field);
@@ -89,6 +96,9 @@ pub async fn run() {
         }
         for bullet in &bullets {
             draw_bullet(bullet);
+        }
+        for asteroid in &asteroids {
+            draw_asteroid(asteroid);
         }
 
         // 6. Следующий кадр.
@@ -128,6 +138,18 @@ fn draw_bullet(bullet: &Bullet) {
         bullet.position.y - SIZE / 2.0,
         SIZE,
         SIZE,
+        FIELD_COLOR,
+    );
+}
+
+/// Окружностью, а не многоугольником: изображение и модель столкновений астероида совпадают точно
+/// (столкновение придёт в `T-AST-7` как круг с кругом, D-27).
+fn draw_asteroid(asteroid: &Asteroid) {
+    draw_circle_lines(
+        asteroid.position.x,
+        asteroid.position.y,
+        asteroid.radius(),
+        2.0,
         FIELD_COLOR,
     );
 }
