@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-11
 LAST_COMPLETED_TASK: T-AST-10
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: a21dbc4/T-AST-9
+LAST_CHECKPOINT: 3d52587/T-AST-10
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-11 (пункт ASTEROIDS в меню; специальный gate — наблюдаемый прогон `cargo run`, откладывается по решению владельца до завершения очереди).
 
 ## Реестр статусов задач
