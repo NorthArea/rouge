@@ -7,10 +7,15 @@ use crate::input::Input;
 /// ориентацию вокруг своей оси.
 pub const PITCH_LIMIT: f32 = 89.0 / 180.0 * std::f32::consts::PI;
 
-/// Игрок как данные (D-44): позиция и взгляд. Вертикальная скорость и признак «на земле» приходят
-/// на `T-ROOM-5`.
+/// Высота глаз игрока над полом — приземление ставит `position.y` не на уровень пола, а на эту
+/// высоту над ним, чтобы камера (которая стоит в `position`) оказалась на высоте глаз, а не в полу.
+pub const EYE_HEIGHT: f32 = 1.6;
+
+/// Игрок как данные (D-44): позиция, взгляд, вертикальная скорость и признак «на земле».
 pub struct Player {
     pub position: Vec3,
+    pub velocity_y: f32,
+    pub on_ground: bool,
     pub yaw: f32,
     pub pitch: f32,
 }
@@ -19,8 +24,29 @@ impl Player {
     pub fn new(position: Vec3) -> Self {
         Self {
             position,
+            velocity_y: 0.0,
+            on_ground: false,
             yaw: 0.0,
             pitch: 0.0,
+        }
+    }
+
+    /// Падение под гравитацией и приземление. Порядок операций фиксирован и больше не меняется:
+    /// сперва скорость, потом позиция, потом приземление — обратный порядок даёт игрока, который на
+    /// один кадр проваливается под пол и выталкивается обратно (визуально дрожание у земли).
+    /// `floor_level` — мировая координата Y пола; приземление ставит `position.y` на
+    /// `floor_level + EYE_HEIGHT`, а не на сам пол (высота глаз, см. `EYE_HEIGHT`).
+    pub fn apply_gravity(&mut self, gravity: f32, delta_time: f32, floor_level: f32) {
+        self.velocity_y -= gravity * delta_time;
+        self.position.y += self.velocity_y * delta_time;
+
+        let eye_level_on_floor = floor_level + EYE_HEIGHT;
+        if self.position.y <= eye_level_on_floor {
+            self.position.y = eye_level_on_floor;
+            self.velocity_y = 0.0;
+            self.on_ground = true;
+        } else {
+            self.on_ground = false;
         }
     }
 
@@ -313,6 +339,90 @@ mod tests {
             player.position.is_finite(),
             "позиция содержит NaN/inf: {:?}",
             player.position
+        );
+    }
+
+    #[test]
+    fn a_player_above_the_floor_falls_over_a_frame_and_speeds_up() {
+        let mut player = Player::new(vec3(0.0, 20.0, 0.0));
+        let position_before = player.position.y;
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        assert!(
+            player.position.y < position_before,
+            "игрок не опустился за кадр: было {}, стало {}",
+            position_before,
+            player.position.y
+        );
+        assert!(
+            player.velocity_y < 0.0,
+            "вертикальная скорость не стала отрицательной: {}",
+            player.velocity_y
+        );
+    }
+
+    #[test]
+    fn falling_accelerates_over_two_frames_in_a_row() {
+        let mut player = Player::new(vec3(0.0, 20.0, 0.0));
+        let start = player.position.y;
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        let after_first_frame = start - player.position.y;
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        let after_second_frame = start - player.position.y;
+        assert!(
+            after_second_frame > after_first_frame * 2.0,
+            "падение не ускоряется: за первый кадр {}, за два — {}",
+            after_first_frame,
+            after_second_frame
+        );
+    }
+
+    #[test]
+    fn falling_stops_exactly_at_the_floor_level_and_not_below() {
+        let mut player = Player::new(vec3(0.0, 20.0, 0.0));
+        for _ in 0..600 {
+            player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        }
+        assert_eq!(
+            player.position.y, EYE_HEIGHT,
+            "игрок остановился не на уровне пола: {}",
+            player.position.y
+        );
+    }
+
+    #[test]
+    fn landing_zeroes_the_vertical_velocity_and_sets_on_ground() {
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT + 0.001, 0.0));
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        assert_eq!(
+            player.velocity_y, 0.0,
+            "скорость после приземления не нулевая"
+        );
+        assert!(
+            player.on_ground,
+            "признак «на земле» не поднят после приземления"
+        );
+    }
+
+    #[test]
+    fn being_airborne_clears_on_ground() {
+        let mut player = Player::new(vec3(0.0, 20.0, 0.0));
+        player.on_ground = true;
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        assert!(
+            !player.on_ground,
+            "признак «на земле» остался истинным в воздухе"
+        );
+    }
+
+    #[test]
+    fn a_player_resting_on_the_floor_does_not_sink_or_jitter_over_a_frame() {
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        player.on_ground = true;
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        assert_eq!(
+            player.position.y, EYE_HEIGHT,
+            "игрок на полу сдвинулся за кадр без ввода: {}",
+            player.position.y
         );
     }
 }

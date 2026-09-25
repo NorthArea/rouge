@@ -25,6 +25,7 @@ pub struct Room {
     pub width: f32,
     pub depth: f32,
     pub wall_height: f32,
+    pub floor_level: f32,
 }
 
 impl Room {
@@ -33,6 +34,7 @@ impl Room {
             width: 20.0,
             depth: 20.0,
             wall_height: 4.0,
+            floor_level: 0.0,
         }
     }
 
@@ -40,13 +42,13 @@ impl Room {
     /// (`draw_plane`, `draw_cube`), никаких моделей и текстур (D-46).
     pub fn draw(&self) {
         draw_plane(
-            vec3(0.0, 0.0, 0.0),
+            vec3(0.0, self.floor_level, 0.0),
             vec2(self.width / 2.0, self.depth / 2.0),
             None,
             FLOOR_COLOR,
         );
 
-        let wall_center_y = self.wall_height / 2.0;
+        let wall_center_y = self.floor_level + self.wall_height / 2.0;
         // Северная и южная стены — вдоль оси X, полной ширины комнаты.
         draw_cube(
             vec3(0.0, wall_center_y, -self.depth / 2.0),
