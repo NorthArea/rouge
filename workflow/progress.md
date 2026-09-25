@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-9
 LAST_COMPLETED_TASK: T-ROOM-8
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-8
+LAST_CHECKPOINT: 27a496b/T-ROOM-8
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-9 (debug overlay: позиция игрока, yaw и pitch поверх сцены в градусах).
 
 ## Реестр статусов задач
