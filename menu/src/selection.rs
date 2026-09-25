@@ -3,10 +3,16 @@
 pub enum MenuItem {
     Pong,
     Arkanoid,
+    Asteroids,
     Quit,
 }
 
-pub const ITEMS: [MenuItem; 3] = [MenuItem::Pong, MenuItem::Arkanoid, MenuItem::Quit];
+pub const ITEMS: [MenuItem; 4] = [
+    MenuItem::Pong,
+    MenuItem::Arkanoid,
+    MenuItem::Asteroids,
+    MenuItem::Quit,
+];
 
 impl MenuItem {
     /// Подпись пункта в списке. Латиницей: кириллица встроенного шрифта Macroquad наблюдением не
@@ -15,6 +21,7 @@ impl MenuItem {
         match self {
             MenuItem::Pong => "PONG",
             MenuItem::Arkanoid => "ARKANOID",
+            MenuItem::Asteroids => "ASTEROIDS",
             MenuItem::Quit => "QUIT",
         }
     }
@@ -140,6 +147,7 @@ mod tests {
         let mut selection = Selection::new();
         selection.move_down();
         selection.move_down();
+        selection.move_down();
 
         assert_eq!(
             selection.confirm(),
@@ -165,6 +173,21 @@ mod tests {
     fn each_item_label_matches_its_name() {
         assert_eq!(MenuItem::Pong.label(), "PONG");
         assert_eq!(MenuItem::Arkanoid.label(), "ARKANOID");
+        assert_eq!(MenuItem::Asteroids.label(), "ASTEROIDS");
         assert_eq!(MenuItem::Quit.label(), "QUIT");
+    }
+
+    #[test]
+    fn moving_down_two_items_points_at_asteroids() {
+        let mut selection = Selection::new();
+        selection.move_down();
+        selection.move_down();
+
+        assert_eq!(
+            selection.confirm(),
+            MenuItem::Asteroids,
+            "подтверждение после двух move_down вернуло {:?}, ожидалось Asteroids",
+            selection.confirm()
+        );
     }
 }

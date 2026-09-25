@@ -76,6 +76,11 @@ async fn main() {
                     next_frame().await;
                     continue;
                 }
+                MenuItem::Asteroids => {
+                    asteroids::run().await;
+                    next_frame().await;
+                    continue;
+                }
                 MenuItem::Quit => break,
             }
         }
