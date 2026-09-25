@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: none
 LAST_COMPLETED_TASK: T-ROOM-12
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-12
+LAST_CHECKPOINT: e141c03/T-ROOM-12
 NEXT_ACTION: Владелец выполняет `cargo run` по чек-листам приёмки T-TDS-15 (Game 04) и T-ROOM-12 (Game 05); после подтверждения обеих — PROJECT_STATUS: COMPLETE.
 
 ## Реестр статусов задач
