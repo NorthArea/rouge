@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-8
 LAST_COMPLETED_TASK: T-AST-7
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: b6c6abc/T-AST-6
+LAST_CHECKPOINT: 8123feb/T-AST-7
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-8 (столкновение корабля с астероидом, три жизни, пауза, respawn, неуязвимость, состояния игры, GameOver, рестарт по R).
 
 ## Реестр статусов задач
