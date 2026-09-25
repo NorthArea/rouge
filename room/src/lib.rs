@@ -1,7 +1,9 @@
 use macroquad::prelude::*;
 
+mod player;
 mod room;
 
+use player::Player;
 use room::Room;
 
 const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
@@ -11,14 +13,22 @@ const BACKGROUND_COLOR: Color = Color::new(0.05, 0.06, 0.09, 1.0);
 /// перспективной проекцией, а не прямым переводом мировых координат в экранные, D-43).
 const FOV_Y_DEGREES: f32 = 60.0;
 
+/// Высота глаз игрока над полом — камера ставится сюда, а не на уровень пола, где стоят его ноги.
+const EYE_HEIGHT: f32 = 1.6;
+
+/// Чувствительность мыши — множитель между смещением мыши за кадр (`mouse_delta_position`, в
+/// локальных экранных единицах) и приращением угла в радианах. Подбирается на глаз на приёмке
+/// (D-46 прямо исключает настройку чувствительности в интерфейсе).
+const MOUSE_SENSITIVITY: f32 = 6.0;
+
 pub async fn run() {
     let room = Room::new();
+    let mut player = Player::new(vec3(0.0, EYE_HEIGHT, room.depth * 0.35));
 
-    // Игрока ещё нет (он появляется на T-ROOM-3): камера стоит в фиксированной точке комнаты и
-    // смотрит в её центр — этого достаточно, чтобы увидеть, что сцена построена и читается.
-    // Привязка к игроку заменяет эти числа его полями, не меняя структуры кадра.
-    let camera_position = vec3(0.0, room.wall_height * 0.7, room.depth * 0.45);
-    let camera_target = vec3(0.0, room.wall_height * 0.25, 0.0);
+    // Захват курсора включается при входе в игру и снимается при выходе по Esc, чтобы меню не
+    // осталось без курсора (D-23 через захват мыши). Не тестируется (D-10) — это состояние окна.
+    set_cursor_grab(true);
+    show_mouse(false);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке (D-09), даже когда
@@ -26,22 +36,28 @@ pub async fn run() {
 
         // 1. Чтение ввода.
         if is_key_pressed(KeyCode::Escape) {
+            set_cursor_grab(false);
+            show_mouse(true);
             break;
         }
+        let mouse_delta = mouse_delta_position();
 
-        // 2. Delta time — здесь пока не потребляется: ни игрока, ни движения ещё нет.
+        // 2. Delta time — здесь пока не потребляется: движение по клавишам приходит на T-ROOM-4.
         let _delta_time = get_frame_time();
 
-        // 3. Обновление состояния — пусто: игрок появляется на T-ROOM-3.
+        // 3. Обновление состояния. Взгляд поворачивается прямо от смещения мыши за кадр — mouse
+        //    look не умножается на delta time, он уже per-frame величина.
+        player.look(mouse_delta, MOUSE_SENSITIVITY);
 
         // 4. Проверка столкновений — пусто: геометрия как данные для столкновений появляется на
         //    T-ROOM-7.
 
-        // 5. Рендеринг.
+        // 5. Рендеринг. Камера стоит в позиции игрока и смотрит по направлению его взгляда — та же
+        //    привязка камеры к игроку, что и в Asteroids/Shooter, только в трёх измерениях.
         clear_background(BACKGROUND_COLOR);
         set_camera(&Camera3D {
-            position: camera_position,
-            target: camera_target,
+            position: player.position,
+            target: player.position + player.look_direction(),
             up: vec3(0.0, 1.0, 0.0),
             fovy: FOV_Y_DEGREES.to_radians(),
             ..Default::default()
