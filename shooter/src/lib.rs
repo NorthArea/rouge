@@ -45,16 +45,20 @@ pub async fn run() {
         // 2. Delta time — время предыдущего кадра, из которого считается любое перемещение.
         let delta_time = get_frame_time();
 
-        // 3. Обновление состояния.
+        // 3. Обновление состояния. Камера считается здесь же, а не только в рендеринге: прицеливание
+        //    нуждается в том же центре камеры, что и отрисовка, иначе курсор и то, что видит игрок,
+        //    разойдутся (D-39).
         player.update(up, down, left, right, delta_time);
         player.clamp_to_arena(arena);
+        let screen_size = vec2(SCREEN_WIDTH, SCREEN_HEIGHT);
+        let center = camera::camera_center(player.position, arena, screen_size);
+        let (mouse_x, mouse_y) = mouse_position();
+        let cursor_world = camera::screen_to_world(vec2(mouse_x, mouse_y), center, screen_size);
+        player.aim_at(cursor_world);
 
         // 4. Проверка столкновений. Пока нечего проверять.
 
-        // 5. Рендеринг. Камера ставится до мыши (D-39: она появится в `T-TDS-4`), чтобы прицеливание
-        //    с самого начала работало в мировых координатах, а не было отлажено задним числом.
-        let screen_size = vec2(SCREEN_WIDTH, SCREEN_HEIGHT);
-        let center = camera::camera_center(player.position, arena, screen_size);
+        // 5. Рендеринг.
         set_camera(&Camera2D {
             target: center,
             zoom: vec2(2.0 / screen_size.x, -2.0 / screen_size.y),
@@ -82,7 +86,8 @@ fn draw_arena(arena: Arena) {
 }
 
 /// Кругом с видимым центром: сам круг — форма столкновения (D-38), точка в центре — чтобы позиция
-/// читалась однозначно, а не только по контуру.
+/// читалась однозначно, а не только по контуру. Короткая линия от центра в сторону `facing()` — ствол,
+/// показывающий, куда целится игрок.
 fn draw_player(player: &Player) {
     draw_circle_lines(
         player.position.x,
@@ -92,4 +97,13 @@ fn draw_player(player: &Player) {
         ARENA_COLOR,
     );
     draw_circle(player.position.x, player.position.y, 2.0, ARENA_COLOR);
+    let barrel_tip = player.position + player.facing() * (player.radius + 14.0);
+    draw_line(
+        player.position.x,
+        player.position.y,
+        barrel_tip.x,
+        barrel_tip.y,
+        3.0,
+        ARENA_COLOR,
+    );
 }

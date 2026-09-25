@@ -17,10 +17,7 @@ pub fn camera_center(player_position: Vec2, arena: Arena, screen_size: Vec2) -> 
     )
 }
 
-/// Единственный на крейт перевод экранной точки в мировую (D-39). Первый потребитель вне тестов —
-/// прицеливание мышью на `T-TDS-4`; до тех пор функция существует и проверена тестами, но не
-/// вызывается из `run()`.
-#[allow(dead_code)]
+/// Единственный на крейт перевод экранной точки в мировую (D-39). Потребитель — прицеливание мышью.
 pub fn screen_to_world(screen_point: Vec2, camera_center: Vec2, screen_size: Vec2) -> Vec2 {
     camera_center - screen_size / 2.0 + screen_point
 }

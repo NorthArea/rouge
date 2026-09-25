@@ -10,6 +10,9 @@ pub const PLAYER_RADIUS: f32 = 16.0;
 pub struct Player {
     pub position: Vec2,
     pub radius: f32,
+    /// Угол ориентации — в сторону последней ненулевой позиции курсора. Инициализируется нулём (вправо
+    /// по оси X), как `Ship::angle` в Asteroids.
+    pub aim_angle: f32,
 }
 
 impl Player {
@@ -17,11 +20,30 @@ impl Player {
         Self {
             position,
             radius: PLAYER_RADIUS,
+            aim_angle: 0.0,
         }
     }
 
-    /// Скорость игрока **присваивается** из ввода, а не накапливается тягой (в отличие от корабля
-    /// Asteroids): отпустил клавишу — остановился в том же кадре. У игрока нет инерции.
+    /// Направление, в котором смотрит игрок — единственный переход «угол → направление» в крейте,
+    /// по прецеденту `Ship::facing()` в Asteroids: отсюда дальше выражаются и ствол, и (в `T-TDS-5`)
+    /// направление выстрела.
+    pub fn facing(&self) -> Vec2 {
+        Vec2::from_angle(self.aim_angle)
+    }
+
+    /// Поворот игрока к курсору. `direction`, `normalized_direction` и `angle` названы отдельно, как
+    /// того требует задание. Курсор ровно на игроке даёт нулевой `direction`, а `try_normalize()` на
+    /// нулевом векторе возвращает `None` — ориентация в этом кадре не пересчитывается и остаётся
+    /// прежней, а не превращается в `NaN` и не сбрасывается в произвольную сторону.
+    pub fn aim_at(&mut self, cursor_world: Vec2) {
+        let direction = cursor_world - self.position;
+        let Some(normalized_direction) = direction.try_normalize() else {
+            return;
+        };
+        let angle = normalized_direction.y.atan2(normalized_direction.x);
+        self.aim_angle = angle;
+    }
+
     /// Скорость игрока **присваивается** из ввода, а не накапливается тягой (в отличие от корабля
     /// Asteroids): отпустил клавишу — остановился в том же кадре. У игрока нет инерции.
     pub fn update(&mut self, up: bool, down: bool, left: bool, right: bool, delta_time: f32) {
@@ -64,6 +86,84 @@ mod tests {
 
     fn arena() -> Arena {
         Arena::new(1920.0, 1200.0)
+    }
+
+    #[test]
+    fn a_cursor_to_the_right_of_the_player_gives_a_rightward_direction() {
+        let mut player = player();
+
+        player.aim_at(player.position + vec2(200.0, 0.0));
+
+        let facing = player.facing();
+        assert!(
+            (facing - vec2(1.0, 0.0)).length() < TOLERANCE,
+            "курсор справа дал направление {:?}, ожидалось (1, 0)",
+            facing
+        );
+    }
+
+    #[test]
+    fn a_cursor_below_the_player_gives_a_downward_direction() {
+        let mut player = player();
+
+        // Ось Y в Macroquad направлена вниз, поэтому курсор с большим Y — это низ экрана.
+        player.aim_at(player.position + vec2(0.0, 200.0));
+
+        let facing = player.facing();
+        assert!(
+            (facing - vec2(0.0, 1.0)).length() < TOLERANCE,
+            "курсор снизу дал направление {:?}, ожидалось (0, 1)",
+            facing
+        );
+    }
+
+    #[test]
+    fn the_facing_direction_has_unit_length_for_an_arbitrary_cursor() {
+        let mut player = player();
+
+        player.aim_at(player.position + vec2(37.0, -481.0));
+
+        assert!(
+            (player.facing().length() - 1.0).abs() < TOLERANCE,
+            "длина направления — {}, ожидалась 1",
+            player.facing().length()
+        );
+    }
+
+    #[test]
+    fn a_cursor_on_the_player_does_not_corrupt_the_orientation() {
+        let mut player = player();
+        player.aim_at(player.position + vec2(0.0, 1.0));
+        let angle_before = player.aim_angle;
+
+        player.aim_at(player.position);
+
+        assert!(
+            (player.aim_angle - angle_before).abs() < TOLERANCE,
+            "курсор на игроке изменил ориентацию: было {}, стало {}",
+            angle_before,
+            player.aim_angle
+        );
+        assert!(
+            player.aim_angle.is_finite(),
+            "ориентация стала нечисловой: {}",
+            player.aim_angle
+        );
+    }
+
+    #[test]
+    fn the_angle_and_the_facing_direction_are_consistent() {
+        let mut player = player();
+        let cursor_direction = vec2(-150.0, 90.0).normalize();
+
+        player.aim_at(player.position + cursor_direction * 300.0);
+
+        assert!(
+            (player.facing() - cursor_direction).length() < TOLERANCE,
+            "facing() дал {:?}, ожидалось направление курсора {:?}",
+            player.facing(),
+            cursor_direction
+        );
     }
 
     #[test]
