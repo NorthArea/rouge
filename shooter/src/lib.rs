@@ -3,13 +3,17 @@ use macroquad::prelude::*;
 mod arena;
 mod bullet;
 mod camera;
+mod collision;
+mod combat;
 mod enemy;
 mod player;
+mod score;
 
 use arena::Arena;
 use bullet::Bullet;
 use enemy::Enemy;
 use player::Player;
+use score::Score;
 
 /// Цвет врага — другой, чтобы он отличался от игрока и пуль на глаз.
 const ENEMY_COLOR: Color = Color::new(0.85, 0.25, 0.25, 1.0);
@@ -37,6 +41,7 @@ pub async fn run() {
     let mut bullets: Vec<Bullet> = Vec::new();
     let mut shoot_cooldown = 0.0;
     let mut enemies: Vec<Enemy> = enemy::spawn_wave(1, arena, player.position);
+    let mut score = Score::new();
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке (D-09) — порядок стадий
@@ -80,7 +85,8 @@ pub async fn run() {
             enemy.chase(player.position, delta_time);
         }
 
-        // 4. Проверка столкновений. Пока нечего проверять.
+        // 4. Проверка столкновений.
+        combat::resolve(&mut bullets, &mut enemies, &mut score);
 
         // 5. Рендеринг.
         set_camera(&Camera2D {
