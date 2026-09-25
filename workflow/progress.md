@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-5
 LAST_COMPLETED_TASK: T-ROOM-4
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-4
+LAST_CHECKPOINT: ae12d6e/T-ROOM-4
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-5 (гравитация: вертикальная скорость, падение, приземление на уровень пола, признак «на земле»).
 
 ## Реестр статусов задач
