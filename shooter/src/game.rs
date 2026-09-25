@@ -14,6 +14,9 @@ const PLAYER_MAX_HEALTH: i32 = 100;
 const CONTACT_DAMAGE: i32 = 20;
 /// Неуязвимость после касания, секунд (D-40).
 const INVULNERABILITY_DURATION: f32 = 1.0;
+/// Начальный запас патронов — при cooldown выстрела 0.25с этого хватает примерно на 10 секунд
+/// непрерывной стрельбы, чтобы расход до нуля укладывался в один сеанс игры в несколько минут.
+const START_AMMO: i32 = 40;
 
 /// Простой `enum` без state-machine framework (прямое требование задания). `WaveCompleted`
 /// добавляется на `T-TDS-11`, когда для него появится поведение.
@@ -46,6 +49,7 @@ pub struct Game {
     pub state: GameState,
     pub health: i32,
     invulnerability_timer: f32,
+    pub ammo: i32,
     /// Первый потребитель вне тестов — волны (`T-TDS-11`).
     #[allow(dead_code)]
     pub wave: u32,
@@ -65,6 +69,7 @@ impl Game {
             state: GameState::WaitingToStart,
             health: PLAYER_MAX_HEALTH,
             invulnerability_timer: 0.0,
+            ammo: START_AMMO,
             wave: 1,
         }
     }
@@ -85,10 +90,13 @@ impl Game {
             GameState::Playing => {
                 self.update_player(input, delta_time);
                 bullet::tick_cooldown(&mut self.shoot_cooldown, delta_time);
-                if input.fire {
+                // При нуле патронов cooldown не трогается: проверка запаса стоит раньше вызова
+                // `bullet::shoot`, а не внутри него — ЛКМ без патронов не запускает cooldown впустую.
+                if input.fire && self.ammo > 0 {
                     if let Some(new_bullet) = bullet::shoot(&mut self.shoot_cooldown, &self.player)
                     {
                         self.bullets.push(new_bullet);
+                        self.ammo -= 1;
                     }
                 }
                 for bullet in &mut self.bullets {
@@ -179,6 +187,19 @@ mod tests {
         let mut game = Game::new(arena());
         game.state = GameState::Playing;
         game.enemies = vec![Enemy::new(game.player.position)];
+        game
+    }
+
+    fn fire_input() -> Input {
+        let mut input = still_input();
+        input.fire = true;
+        input
+    }
+
+    fn playing_game() -> Game {
+        let mut game = Game::new(arena());
+        game.state = GameState::Playing;
+        game.enemies = Vec::new(); // без врагов, чтобы контактный урон не мешал тестам боеприпасов
         game
     }
 
@@ -308,6 +329,67 @@ mod tests {
             GameState::WaitingToStart,
             "состояние после рестарта из Playing — {:?}",
             game.state
+        );
+    }
+
+    #[test]
+    fn firing_a_shot_reduces_ammo_by_exactly_one() {
+        let mut game = playing_game();
+        let ammo_before = game.ammo;
+
+        game.update(&fire_input(), 1.0 / 60.0);
+
+        assert_eq!(
+            game.ammo,
+            ammo_before - 1,
+            "запас после выстрела — {}, ожидалось {}",
+            game.ammo,
+            ammo_before - 1
+        );
+    }
+
+    #[test]
+    fn firing_with_zero_ammo_does_not_create_a_bullet() {
+        let mut game = playing_game();
+        game.ammo = 0;
+
+        game.update(&fire_input(), 1.0 / 60.0);
+
+        assert!(
+            game.bullets.is_empty(),
+            "выстрел при нуле патронов создал пулю"
+        );
+    }
+
+    #[test]
+    fn ammo_never_goes_negative() {
+        let mut game = playing_game();
+        game.ammo = 1;
+
+        // Два выстрела подряд: cooldown между ними выдержан явно, чтобы проверить именно ammo,
+        // а не cooldown.
+        game.update(&fire_input(), 1.0 / 60.0);
+        game.update(&still_input(), 1.0);
+        game.update(&fire_input(), 1.0 / 60.0);
+
+        assert!(game.ammo >= 0, "запас патронов ушёл в минус: {}", game.ammo);
+    }
+
+    #[test]
+    fn the_last_bullet_fires_and_the_next_click_does_not() {
+        let mut game = playing_game();
+        game.ammo = 1;
+
+        game.update(&fire_input(), 1.0 / 60.0);
+        assert_eq!(game.bullets.len(), 1, "последний патрон не выстрелил");
+
+        game.update(&still_input(), 1.0);
+        game.update(&fire_input(), 1.0 / 60.0);
+
+        assert_eq!(
+            game.bullets.len(),
+            1,
+            "выстрел при нуле патронов после последнего создал вторую пулю"
         );
     }
 }
