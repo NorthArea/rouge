@@ -4,13 +4,13 @@
 
 ## Указатель восстановления
 
-PROJECT_STATUS: COMPLETE
+PROJECT_STATUS: IN_PROGRESS
 CURRENT_TASK: none
-NEXT_BACKLOG_ID: none
+NEXT_BACKLOG_ID: T-TDS-1
 LAST_COMPLETED_TASK: T-AST-13
 LAST_GREEN_COMMAND: make check
 LAST_CHECKPOINT: df3d886/T-AST-13
-NEXT_ACTION: Проект завершён: три игры из плана (D-32) приняты владельцем. Новая работа начинается только с идеи владельца — передать её architect через /workflow:idea.
+NEXT_ACTION: Выполнить /workflow:build — developer берёт T-TDS-1 (крейт `shooter`, окно, арена больше окна, стадии кадра, `Esc`).
 
 ## Реестр статусов задач
 
