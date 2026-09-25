@@ -10,7 +10,7 @@ mod ship;
 
 use asteroid::Asteroid;
 use bullet::Bullet;
-use game::Game;
+use game::{Effect, Game};
 use ship::Ship;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
@@ -80,6 +80,13 @@ pub async fn run() {
         for asteroid in &game.asteroids {
             draw_asteroid(asteroid);
         }
+        for effect in &game.effects {
+            draw_effect(effect);
+        }
+        draw_status(&game);
+        if let Some(message) = game.state.message(game.wave + 1) {
+            draw_message(field, &message);
+        }
 
         // 6. Следующий кадр.
         next_frame().await;
@@ -132,6 +139,40 @@ fn draw_asteroid(asteroid: &Asteroid) {
         2.0,
         FIELD_COLOR,
     );
+}
+
+/// Растущий и затухающий круг на месте уничтоженного астероида (`Effect::progress` — доля прожитого
+/// времени эффекта); отрисовка не тестируется (D-10).
+fn draw_effect(effect: &Effect) {
+    let progress = effect.progress();
+    let radius = 10.0 + progress * 30.0;
+    let mut color = FIELD_COLOR;
+    color.a = 1.0 - progress;
+    draw_circle_lines(effect.position.x, effect.position.y, radius, 2.0, color);
+}
+
+/// Строка статуса в левом верхнем углу: счёт, жизни, номер волны. Отрисовка не тестируется (D-10);
+/// сами значения читаются напрямую из `Game`.
+fn draw_status(game: &Game) {
+    let text = format!(
+        "Score {}   Lives {}   Wave {}",
+        game.score.value(),
+        game.lives,
+        game.wave
+    );
+    draw_text(&text, 16.0, 28.0, 24.0, FIELD_COLOR);
+}
+
+/// Сообщение состояния по центру поля (`GameState::message`); латиница — та же причина, что в
+/// Pong и Arkanoid (кириллические глифы встроенного шрифта Macroquad наблюдением не проверены).
+fn draw_message(field: Field, message: &str) {
+    const FONT_SIZE: f32 = 32.0;
+    for (line_index, line) in message.lines().enumerate() {
+        let dimensions = measure_text(line, None, FONT_SIZE as u16, 1.0);
+        let x = (field.width - dimensions.width) / 2.0;
+        let y = field.height / 2.0 + line_index as f32 * (FONT_SIZE + 6.0);
+        draw_text(line, x, y, FONT_SIZE, FIELD_COLOR);
+    }
 }
 
 /// `draw_rectangle_lines` рисует рамку по центру контура, поэтому её внешняя половина ушла бы

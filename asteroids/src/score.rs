@@ -10,12 +10,8 @@ impl Score {
         self.0 += points;
     }
 
-    /// Отображение счёта — задача `T-AST-10` (строка статуса `Score`/`Lives`/`Wave`), у неё здесь
-    /// пока нет потребителя вне теста: `#[cfg(test)]` держит метод видимым только для тестов, чтобы
-    /// не ловить `-D dead-code` под `cargo build --workspace` (тот же приём, что для `velocity`
-    /// корабля на `T-AST-2` и `AsteroidSize::{Medium, Small}` на `T-AST-6`/`T-AST-7`).
-    #[cfg(test)]
-    pub(crate) fn value(&self) -> u32 {
+    /// Читает строка статуса (`draw_status`, `T-AST-10`) — первый потребитель вне теста.
+    pub fn value(&self) -> u32 {
         self.0
     }
 }

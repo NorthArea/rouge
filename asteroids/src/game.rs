@@ -24,14 +24,49 @@ pub enum GameState {
     GameOver,
 }
 
-/// Ровно четыре таймера во всей игре (D-29): cooldown выстрела и lifetime пули (в `Bullet`/`Weapon`,
-/// `T-AST-5`), пауза перед respawn и неуязвимость (здесь, поля `f32`, убывающие на `delta_time`).
+impl GameState {
+    /// Текст, который видит игрок в этом состоянии; `wave` — номер волны, которая начнётся следующей
+    /// (нужен только для `WaveCompleted`). Латиница, потому что кириллические глифы встроенного
+    /// шрифта Macroquad наблюдением не проверены (уже записано в Pong и Arkanoid).
+    pub fn message(self, wave: u32) -> Option<String> {
+        match self {
+            GameState::WaitingToStart => Some("Press SPACE to start".to_string()),
+            GameState::Playing => None,
+            GameState::PlayerDestroyed => Some("Ship destroyed".to_string()),
+            GameState::WaveCompleted => Some(format!("Wave {wave}")),
+            GameState::GameOver => Some("GAME OVER\nPress R to restart".to_string()),
+        }
+    }
+}
+
+/// Короткий визуальный эффект на месте уничтоженного астероида — растущий и затухающий круг, ничего
+/// общего с particle system (D-31 запрещает её первой версии): одна точка и один таймер жизни, тот же
+/// приём, что у `Bullet::time_to_live`.
+const EFFECT_DURATION: f32 = 0.3;
+
+pub struct Effect {
+    pub position: Vec2,
+    time_remaining: f32,
+}
+
+impl Effect {
+    /// Доля прожитого времени эффекта, `0.0` — только появился, `1.0` — вот-вот исчезнет; отрисовка
+    /// использует её, чтобы растить радиус и гасить яркость (untested по D-10, сама отрисовка).
+    pub fn progress(&self) -> f32 {
+        1.0 - self.time_remaining / EFFECT_DURATION
+    }
+}
+
+/// Ровно четыре таймера *в игре* (D-29: cooldown выстрела, lifetime пули, пауза перед respawn,
+/// неуязвимость) — `time_remaining` эффекта разрушения не входит в их число: это чисто визуальные
+/// данные, отделённые от игровой логики (столкновений, respawn, волн), и D-29 их не считает.
 pub struct Game {
     pub field: Field,
     pub ship: Ship,
     pub bullets: Vec<Bullet>,
     weapon: Weapon,
     pub asteroids: Vec<Asteroid>,
+    pub effects: Vec<Effect>,
     pub score: Score,
     pub lives: u32,
     pub wave: u32,
@@ -48,6 +83,7 @@ impl Game {
             bullets: Vec::new(),
             weapon: Weapon::new(),
             asteroids: asteroid::spawn_wave(1, field),
+            effects: Vec::new(),
             score: Score::new(),
             lives: LIVES,
             wave: 1,
@@ -111,7 +147,17 @@ impl Game {
             asteroid.advance(delta_time);
             asteroid.wrap(self.field);
         }
-        combat::resolve(&mut self.bullets, &mut self.asteroids, &mut self.score);
+        let destroyed = combat::resolve(&mut self.bullets, &mut self.asteroids, &mut self.score);
+        for position in destroyed {
+            self.effects.push(Effect {
+                position,
+                time_remaining: EFFECT_DURATION,
+            });
+        }
+        for effect in &mut self.effects {
+            effect.time_remaining -= delta_time;
+        }
+        self.effects.retain(|effect| effect.time_remaining > 0.0);
 
         if self.state == GameState::Playing {
             self.check_ship_collision();
@@ -484,6 +530,79 @@ mod tests {
             GameState::Playing,
             "переход волны не вернул игру в Playing: состояние {:?}",
             game.state
+        );
+    }
+
+    #[test]
+    fn each_state_shows_its_own_message() {
+        assert_eq!(
+            GameState::WaitingToStart.message(2),
+            Some("Press SPACE to start".to_string()),
+            "WaitingToStart"
+        );
+        assert_eq!(
+            GameState::Playing.message(2),
+            None,
+            "Playing должен быть без сообщения"
+        );
+        assert_eq!(
+            GameState::PlayerDestroyed.message(2),
+            Some("Ship destroyed".to_string()),
+            "PlayerDestroyed"
+        );
+        assert_eq!(
+            GameState::WaveCompleted.message(2),
+            Some("Wave 2".to_string()),
+            "WaveCompleted"
+        );
+        assert_eq!(
+            GameState::GameOver.message(2),
+            Some("GAME OVER\nPress R to restart".to_string()),
+            "GameOver"
+        );
+    }
+
+    #[test]
+    fn destroying_an_asteroid_spawns_an_effect_at_its_position() {
+        let mut game = Game::new(field());
+        game.state = GameState::Playing;
+        game.asteroids = vec![stationary_asteroid_at(vec2(50.0, 50.0))];
+        game.bullets = vec![Bullet::at(vec2(50.0, 50.0), Vec2::ZERO)];
+
+        game.update(0.0, false, false, 1.0 / 60.0);
+
+        assert_eq!(
+            game.effects.len(),
+            1,
+            "эффектов после уничтожения — {}, ожидался 1",
+            game.effects.len()
+        );
+        assert!(
+            (game.effects[0].position - vec2(50.0, 50.0)).length() < TOLERANCE,
+            "эффект появился в {:?}, ожидалось (50, 50)",
+            game.effects[0].position
+        );
+    }
+
+    #[test]
+    fn an_effect_disappears_after_its_duration() {
+        let mut game = Game::new(field());
+        game.state = GameState::Playing;
+        game.asteroids = vec![stationary_asteroid_at(vec2(50.0, 50.0))];
+        game.bullets = vec![Bullet::at(vec2(50.0, 50.0), Vec2::ZERO)];
+        game.update(0.0, false, false, 1.0 / 60.0);
+        assert_eq!(
+            game.effects.len(),
+            1,
+            "эффект не появился, тест некорректен"
+        );
+
+        game.update(0.0, false, false, EFFECT_DURATION + 0.01);
+
+        assert!(
+            game.effects.is_empty(),
+            "эффект пережил свою длительность: осталось {}",
+            game.effects.len()
         );
     }
 }

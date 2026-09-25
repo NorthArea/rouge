@@ -1,3 +1,5 @@
+use macroquad::prelude::*;
+
 use crate::asteroid::Asteroid;
 use crate::bullet::{Bullet, BULLET_RADIUS};
 use crate::collision;
@@ -8,10 +10,20 @@ use crate::score::Score;
 /// обеим коллекциям и `append` осколков. Одна пуля уничтожает не больше одного астероида за кадр
 /// (`break` сразу после первого попадания).
 ///
-pub fn resolve(bullets: &mut Vec<Bullet>, asteroids: &mut Vec<Asteroid>, score: &mut Score) {
+/// Возвращает позиции уничтоженных астероидов — не для игровой логики, а для короткого визуального
+/// эффекта разрушения (`T-AST-10`, `Game::effects`), чтобы эта функция осталась источником правды о
+/// том, что именно было уничтожено в этом кадре.
+///
+/// СТАБ: возвращает пустой вектор — RED должен показать, что уничтоженные позиции не сообщаются.
+pub fn resolve(
+    bullets: &mut Vec<Bullet>,
+    asteroids: &mut Vec<Asteroid>,
+    score: &mut Score,
+) -> Vec<Vec2> {
     let mut bullet_hit = vec![false; bullets.len()];
     let mut asteroid_hit = vec![false; asteroids.len()];
     let mut debris = Vec::new();
+    let mut destroyed_positions = Vec::new();
 
     for (bullet_index, bullet) in bullets.iter().enumerate() {
         for (asteroid_index, asteroid) in asteroids.iter().enumerate() {
@@ -28,6 +40,7 @@ pub fn resolve(bullets: &mut Vec<Bullet>, asteroids: &mut Vec<Asteroid>, score: 
                 asteroid_hit[asteroid_index] = true;
                 score.add(asteroid.size.points());
                 debris.extend(asteroid.split());
+                destroyed_positions.push(asteroid.position);
                 // Одна пуля уничтожает не больше одного астероида за кадр.
                 break;
             }
@@ -47,12 +60,13 @@ pub fn resolve(bullets: &mut Vec<Bullet>, asteroids: &mut Vec<Asteroid>, score: 
         keep
     });
     asteroids.append(&mut debris);
+
+    destroyed_positions
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use macroquad::prelude::*;
 
     use crate::asteroid::AsteroidSize;
 
@@ -219,6 +233,45 @@ mod tests {
             1,
             "после попадания на стыке двух Small осталось {} астероидов, ожидался 1",
             asteroids.len()
+        );
+    }
+
+    #[test]
+    fn a_hit_reports_the_destroyed_asteroids_position() {
+        let mut bullets = vec![bullet_at(vec2(100.0, 100.0))];
+        let mut asteroids = vec![Asteroid {
+            position: vec2(100.0, 100.0),
+            velocity: Vec2::ZERO,
+            size: AsteroidSize::Small,
+        }];
+        let mut score = Score::new();
+
+        let destroyed = resolve(&mut bullets, &mut asteroids, &mut score);
+
+        assert_eq!(
+            destroyed,
+            vec![vec2(100.0, 100.0)],
+            "уничтоженные позиции — {:?}, ожидалось [(100, 100)]",
+            destroyed
+        );
+    }
+
+    #[test]
+    fn a_frame_without_a_hit_reports_no_destroyed_asteroids() {
+        let mut bullets: Vec<Bullet> = Vec::new();
+        let mut asteroids = vec![Asteroid {
+            position: vec2(100.0, 100.0),
+            velocity: Vec2::ZERO,
+            size: AsteroidSize::Small,
+        }];
+        let mut score = Score::new();
+
+        let destroyed = resolve(&mut bullets, &mut asteroids, &mut score);
+
+        assert!(
+            destroyed.is_empty(),
+            "кадр без попаданий сообщил уничтоженные позиции: {:?}",
+            destroyed
         );
     }
 }
