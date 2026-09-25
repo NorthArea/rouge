@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 
 use crate::asteroid::{self, Asteroid};
-use crate::bullet::{self, Bullet, Weapon};
+use crate::bullet::{self, Bullet};
 use crate::collision;
 use crate::combat;
 use crate::score::Score;
@@ -64,7 +64,7 @@ pub struct Game {
     pub field: Field,
     pub ship: Ship,
     pub bullets: Vec<Bullet>,
-    weapon: Weapon,
+    shoot_cooldown: f32,
     pub asteroids: Vec<Asteroid>,
     pub effects: Vec<Effect>,
     pub score: Score,
@@ -81,7 +81,7 @@ impl Game {
             field,
             ship: Ship::new(center(field)),
             bullets: Vec::new(),
-            weapon: Weapon::new(),
+            shoot_cooldown: 0.0,
             asteroids: asteroid::spawn_wave(1, field),
             effects: Vec::new(),
             score: Score::new(),
@@ -112,9 +112,9 @@ impl Game {
             }
             GameState::Playing => {
                 self.update_ship(turn, thrusting, delta_time);
-                self.weapon.tick(delta_time);
+                bullet::tick_cooldown(&mut self.shoot_cooldown, delta_time);
                 if space_pressed {
-                    if let Some(bullet) = self.weapon.shoot(&self.ship) {
+                    if let Some(bullet) = bullet::shoot(&mut self.shoot_cooldown, &self.ship) {
                         self.bullets.push(bullet);
                     }
                 }

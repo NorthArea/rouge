@@ -65,28 +65,20 @@ pub fn remove_expired(bullets: &mut Vec<Bullet>) {
     bullets.retain(|bullet| !bullet.is_expired());
 }
 
-/// Кулдаун между выстрелами: единственное состояние, которое нужно для стрельбы помимо самих пуль.
-pub struct Weapon {
-    cooldown: f32,
+/// Кулдаун между выстрелами — простое поле `f32` в `Game` (`shoot_cooldown`), а не отдельная
+/// сущность (D-25: «жизни, номер волны и таймеры — простые поля в `Game`, а не отдельные
+/// сущности»); эти две функции — единственное, что нужно, чтобы им управлять.
+pub fn tick_cooldown(cooldown: &mut f32, delta_time: f32) {
+    *cooldown = (*cooldown - delta_time).max(0.0);
 }
 
-impl Weapon {
-    pub fn new() -> Self {
-        Self { cooldown: 0.0 }
+/// `None`, пока cooldown не истёк; иначе — новая пуля, и cooldown выставляется заново.
+pub fn shoot(cooldown: &mut f32, ship: &Ship) -> Option<Bullet> {
+    if *cooldown > 0.0 {
+        return None;
     }
-
-    pub fn tick(&mut self, delta_time: f32) {
-        self.cooldown = (self.cooldown - delta_time).max(0.0);
-    }
-
-    /// `None`, пока cooldown не истёк; иначе — новая пуля, и cooldown выставляется заново.
-    pub fn shoot(&mut self, ship: &Ship) -> Option<Bullet> {
-        if self.cooldown > 0.0 {
-            return None;
-        }
-        self.cooldown = SHOOT_COOLDOWN;
-        Some(Bullet::spawn(ship))
-    }
+    *cooldown = SHOOT_COOLDOWN;
+    Some(Bullet::spawn(ship))
 }
 
 #[cfg(test)]
@@ -106,9 +98,9 @@ mod tests {
     #[test]
     fn shooting_adds_one_bullet_aimed_where_the_ship_faces() {
         let ship = ship();
-        let mut weapon = Weapon::new();
+        let mut cooldown = 0.0;
 
-        let bullet = weapon.shoot(&ship).expect("выстрел не дал пулю");
+        let bullet = shoot(&mut cooldown, &ship).expect("выстрел не дал пулю");
 
         let direction = bullet.velocity.normalize();
         assert!(
@@ -121,9 +113,9 @@ mod tests {
     #[test]
     fn the_bullet_spawns_ahead_of_the_ship_not_at_its_center() {
         let ship = ship();
-        let mut weapon = Weapon::new();
+        let mut cooldown = 0.0;
 
-        let bullet = weapon.shoot(&ship).expect("выстрел не дал пулю");
+        let bullet = shoot(&mut cooldown, &ship).expect("выстрел не дал пулю");
 
         assert!(
             (bullet.position - ship.position).length() > TOLERANCE,
@@ -135,10 +127,10 @@ mod tests {
     #[test]
     fn a_second_shot_in_the_same_frame_is_blocked_by_cooldown() {
         let ship = ship();
-        let mut weapon = Weapon::new();
-        weapon.shoot(&ship);
+        let mut cooldown = 0.0;
+        shoot(&mut cooldown, &ship);
 
-        let second = weapon.shoot(&ship);
+        let second = shoot(&mut cooldown, &ship);
 
         assert!(
             second.is_none(),
@@ -149,11 +141,11 @@ mod tests {
     #[test]
     fn a_shot_after_the_cooldown_expires_goes_through() {
         let ship = ship();
-        let mut weapon = Weapon::new();
-        weapon.shoot(&ship);
+        let mut cooldown = 0.0;
+        shoot(&mut cooldown, &ship);
 
-        weapon.tick(SHOOT_COOLDOWN + 0.01);
-        let after_cooldown = weapon.shoot(&ship);
+        tick_cooldown(&mut cooldown, SHOOT_COOLDOWN + 0.01);
+        let after_cooldown = shoot(&mut cooldown, &ship);
 
         assert!(
             after_cooldown.is_some(),
@@ -164,24 +156,24 @@ mod tests {
     #[test]
     fn cooldown_ticks_the_same_at_60_and_120_fps() {
         let ship = ship();
-        let mut at_60_fps = Weapon::new();
-        at_60_fps.shoot(&ship);
+        let mut at_60_fps = 0.0;
+        shoot(&mut at_60_fps, &ship);
         for _ in 0..18 {
             // 18 кадров по 1/60 = 0.3с — ровно SHOOT_COOLDOWN.
-            at_60_fps.tick(1.0 / 60.0);
+            tick_cooldown(&mut at_60_fps, 1.0 / 60.0);
         }
-        let mut at_120_fps = Weapon::new();
-        at_120_fps.shoot(&ship);
+        let mut at_120_fps = 0.0;
+        shoot(&mut at_120_fps, &ship);
         for _ in 0..36 {
-            at_120_fps.tick(1.0 / 120.0);
+            tick_cooldown(&mut at_120_fps, 1.0 / 120.0);
         }
 
         assert!(
-            at_60_fps.shoot(&ship).is_some(),
+            shoot(&mut at_60_fps, &ship).is_some(),
             "60 FPS: cooldown не истёк за 0.3с"
         );
         assert!(
-            at_120_fps.shoot(&ship).is_some(),
+            shoot(&mut at_120_fps, &ship).is_some(),
             "120 FPS: cooldown не истёк за 0.3с"
         );
     }

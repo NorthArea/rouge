@@ -138,6 +138,25 @@ mod tests {
     }
 
     #[test]
+    fn large_is_bigger_than_medium_is_bigger_than_small() {
+        // Обещано в backlog при переносе с T-AST-6 на T-AST-7 (первый потребитель Medium/Small —
+        // разбиение), но так и не дописано; найдено аудитом D-26 на T-AST-13 (пункт чек-листа 7 —
+        // «существуют большие, средние и маленькие астероиды»).
+        assert!(
+            AsteroidSize::Large.radius() > AsteroidSize::Medium.radius(),
+            "Large ({}) не больше Medium ({})",
+            AsteroidSize::Large.radius(),
+            AsteroidSize::Medium.radius()
+        );
+        assert!(
+            AsteroidSize::Medium.radius() > AsteroidSize::Small.radius(),
+            "Medium ({}) не больше Small ({})",
+            AsteroidSize::Medium.radius(),
+            AsteroidSize::Small.radius()
+        );
+    }
+
+    #[test]
     fn moving_covers_the_same_distance_regardless_of_frame_rate() {
         let mut at_60_fps = Asteroid {
             position: vec2(100.0, 100.0),
