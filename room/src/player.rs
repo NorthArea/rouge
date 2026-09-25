@@ -47,28 +47,68 @@ impl Player {
     /// `position.y` — высота глаз, а не центр тела, поэтому центр коробки смещён вниз на
     /// `EYE_HEIGHT - HALF_EXTENTS.y`. Первый потребитель вне тестов — разрешение столкновений по
     /// осям (`T-ROOM-8`).
-    #[allow(dead_code)]
     pub fn aabb(&self) -> Aabb {
         let center = self.position - vec3(0.0, EYE_HEIGHT - HALF_EXTENTS.y, 0.0);
         Aabb::from_center_half_extents(center, HALF_EXTENTS)
     }
 
+    /// Применяет смещение по одной оси (остальные компоненты `delta` должны быть нулём — вызывающий
+    /// код гарантирует это, разбивая полное перемещение на отдельные оси) и откатывает его, если
+    /// коробка игрока после сдвига пересекает хоть одну коробку `colliders`. Возвращает, было ли
+    /// столкновение — вызывающий код использует это для скольжения вдоль стены (D-43): движение,
+    /// применённое по одной оси за раз, само по себе даёт скольжение, отдельной функции для него не
+    /// нужно.
+    fn move_axis(&mut self, delta: Vec3, colliders: &[Aabb]) -> bool {
+        if delta == Vec3::ZERO {
+            return false;
+        }
+        self.position += delta;
+        let collided = colliders
+            .iter()
+            .any(|collider| self.aabb().intersects(collider));
+        if collided {
+            self.position -= delta;
+        }
+        collided
+    }
+
     /// Падение под гравитацией и приземление. Порядок операций фиксирован и больше не меняется:
     /// сперва скорость, потом позиция, потом приземление — обратный порядок даёт игрока, который на
     /// один кадр проваливается под пол и выталкивается обратно (визуально дрожание у земли).
-    /// `floor_level` — мировая координата Y пола; приземление ставит `position.y` на
-    /// `floor_level + EYE_HEIGHT`, а не на сам пол (высота глаз, см. `EYE_HEIGHT`).
-    pub fn apply_gravity(&mut self, gravity: f32, delta_time: f32, floor_level: f32) {
+    /// `floor_level` — мировая координата Y пола (не смоделирована как `Aabb`, в отличие от стен и
+    /// препятствий — единственная поверхность, всегда покрывающая всю комнату целиком, проверка для
+    /// неё проще прямого сравнения высоты). `colliders` — стены и кубы-препятствия: падение на
+    /// верхнюю грань останавливает игрока так же, как пол (`on_ground = true`), а движение вверх
+    /// (прыжок) под нижнюю грань гасит подъём, не пронося игрока сквозь препятствие.
+    pub fn apply_gravity(
+        &mut self,
+        gravity: f32,
+        delta_time: f32,
+        floor_level: f32,
+        colliders: &[Aabb],
+    ) {
         self.velocity_y -= gravity * delta_time;
-        self.position.y += self.velocity_y * delta_time;
+        let delta_y = self.velocity_y * delta_time;
+        self.position.y += delta_y;
 
         let eye_level_on_floor = floor_level + EYE_HEIGHT;
         if self.position.y <= eye_level_on_floor {
             self.position.y = eye_level_on_floor;
             self.velocity_y = 0.0;
             self.on_ground = true;
-        } else {
-            self.on_ground = false;
+            return;
+        }
+        self.on_ground = false;
+
+        let collided = colliders
+            .iter()
+            .any(|collider| self.aabb().intersects(collider));
+        if collided {
+            self.position.y -= delta_y;
+            self.velocity_y = 0.0;
+            if delta_y < 0.0 {
+                self.on_ground = true;
+            }
         }
     }
 
@@ -105,7 +145,16 @@ impl Player {
     /// движение по диагонали не быстрее прямого — намерение нормализуется, если оно не нулевое
     /// (нулевой вектор не нормализуется, чтобы не получить `NaN`, когда клавиши не нажаты или
     /// противоположные пары гасят друг друга).
-    pub fn move_on_floor(&mut self, input: &Input, speed: f32, delta_time: f32) {
+    /// `colliders` — стены и кубы-препятствия. Каждая горизонтальная ось применяется и проверяется
+    /// отдельно (D-43): движение, упёршееся в стену по диагонали, теряет только составляющую поперёк
+    /// стены — скольжение вдоль неё не отдельная функция, а прямое следствие пооосевого разрешения.
+    pub fn move_on_floor(
+        &mut self,
+        input: &Input,
+        colliders: &[Aabb],
+        speed: f32,
+        delta_time: f32,
+    ) {
         let (forward, right) = horizontal_axes(self.yaw);
         let mut intent = Vec3::ZERO;
         if input.forward {
@@ -123,7 +172,9 @@ impl Player {
         if intent.length_squared() > 0.0 {
             intent = intent.normalize();
         }
-        self.position += intent * speed * delta_time;
+        let delta = intent * speed * delta_time;
+        self.move_axis(vec3(delta.x, 0.0, 0.0), colliders);
+        self.move_axis(vec3(0.0, 0.0, delta.z), colliders);
     }
 }
 
@@ -310,12 +361,12 @@ mod tests {
             ..no_movement()
         };
         for _ in 0..60 {
-            player_60fps.move_on_floor(&input, 5.0, 1.0 / 60.0);
+            player_60fps.move_on_floor(&input, &[], 5.0, 1.0 / 60.0);
         }
 
         let mut player_120fps = Player::new(vec3(0.0, 0.0, 0.0));
         for _ in 0..120 {
-            player_120fps.move_on_floor(&input, 5.0, 1.0 / 120.0);
+            player_120fps.move_on_floor(&input, &[], 5.0, 1.0 / 120.0);
         }
 
         assert!(
@@ -334,14 +385,14 @@ mod tests {
             right: true,
             ..no_movement()
         };
-        diagonal.move_on_floor(&diagonal_input, 5.0, 1.0);
+        diagonal.move_on_floor(&diagonal_input, &[], 5.0, 1.0);
 
         let mut straight = Player::new(vec3(0.0, 0.0, 0.0));
         let straight_input = Input {
             forward: true,
             ..no_movement()
         };
-        straight.move_on_floor(&straight_input, 5.0, 1.0);
+        straight.move_on_floor(&straight_input, &[], 5.0, 1.0);
 
         assert!(
             diagonal.position.length() <= straight.position.length() + 1e-5,
@@ -361,7 +412,7 @@ mod tests {
             right: true,
             ..no_movement()
         };
-        player.move_on_floor(&input, 5.0, 1.0);
+        player.move_on_floor(&input, &[], 5.0, 1.0);
         assert_eq!(
             player.position,
             vec3(0.0, 0.0, 0.0),
@@ -379,7 +430,7 @@ mod tests {
     fn a_player_above_the_floor_falls_over_a_frame_and_speeds_up() {
         let mut player = Player::new(vec3(0.0, 20.0, 0.0));
         let position_before = player.position.y;
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         assert!(
             player.position.y < position_before,
             "игрок не опустился за кадр: было {}, стало {}",
@@ -397,9 +448,9 @@ mod tests {
     fn falling_accelerates_over_two_frames_in_a_row() {
         let mut player = Player::new(vec3(0.0, 20.0, 0.0));
         let start = player.position.y;
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         let after_first_frame = start - player.position.y;
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         let after_second_frame = start - player.position.y;
         assert!(
             after_second_frame > after_first_frame * 2.0,
@@ -413,7 +464,7 @@ mod tests {
     fn falling_stops_exactly_at_the_floor_level_and_not_below() {
         let mut player = Player::new(vec3(0.0, 20.0, 0.0));
         for _ in 0..600 {
-            player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+            player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         }
         assert_eq!(
             player.position.y, EYE_HEIGHT,
@@ -425,7 +476,7 @@ mod tests {
     #[test]
     fn landing_zeroes_the_vertical_velocity_and_sets_on_ground() {
         let mut player = Player::new(vec3(0.0, EYE_HEIGHT + 0.001, 0.0));
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         assert_eq!(
             player.velocity_y, 0.0,
             "скорость после приземления не нулевая"
@@ -440,7 +491,7 @@ mod tests {
     fn being_airborne_clears_on_ground() {
         let mut player = Player::new(vec3(0.0, 20.0, 0.0));
         player.on_ground = true;
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         assert!(
             !player.on_ground,
             "признак «на земле» остался истинным в воздухе"
@@ -494,7 +545,7 @@ mod tests {
         };
         player.jump(&jump_input);
         for _ in 0..600 {
-            player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+            player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         }
         assert!(
             player.on_ground,
@@ -515,7 +566,7 @@ mod tests {
         let velocity_after_first_jump = player.velocity_y;
         // Клавиша всё ещё "нажата" в следующем кадре — Input.jump тоже true, как если бы вызов
         // is_key_pressed по ошибке заменили на is_key_down.
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         player.jump(&jump_input);
         assert!(
             player.velocity_y <= velocity_after_first_jump,
@@ -529,7 +580,7 @@ mod tests {
     fn a_player_resting_on_the_floor_does_not_sink_or_jitter_over_a_frame() {
         let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
         player.on_ground = true;
-        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[]);
         assert_eq!(
             player.position.y, EYE_HEIGHT,
             "игрок на полу сдвинулся за кадр без ввода: {}",
@@ -556,6 +607,165 @@ mod tests {
             "коробка не сдвинулась вместе с игроком: было {:?}, стало {:?}",
             aabb_before.min,
             aabb_after.min
+        );
+    }
+
+    #[test]
+    fn walking_straight_into_a_wall_stops_before_it() {
+        let wall = Aabb::from_center_half_extents(vec3(0.0, 2.0, -5.0), vec3(10.0, 2.0, 0.5));
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, -3.0));
+        let input = Input {
+            forward: true,
+            ..no_movement()
+        };
+        for _ in 0..120 {
+            player.move_on_floor(&input, &[wall], 5.0, 1.0 / 60.0);
+        }
+        assert!(
+            player.position.z > wall.max.z,
+            "игрок оказался в стене или прошёл сквозь неё: z={}, ближняя грань стены — {}",
+            player.position.z,
+            wall.max.z
+        );
+    }
+
+    #[test]
+    fn walking_diagonally_into_a_wall_slides_along_it() {
+        let wall = Aabb::from_center_half_extents(vec3(0.0, 2.0, -5.0), vec3(10.0, 2.0, 0.5));
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, -3.0));
+        let input = Input {
+            forward: true,
+            right: true,
+            ..no_movement()
+        };
+        for _ in 0..120 {
+            player.move_on_floor(&input, &[wall], 5.0, 1.0 / 60.0);
+        }
+        assert!(
+            player.position.z > wall.max.z,
+            "игрок оказался в стене или прошёл сквозь неё при движении по диагонали: z={}",
+            player.position.z
+        );
+        // Если бы отменялось всё перемещение целиком (а не только Z), игрок прилип бы к стене в
+        // момент первого касания и X почти не вырос бы за оставшиеся кадры.
+        assert!(
+            player.position.x > 5.0,
+            "движение вдоль стены (по X) остановилось вместе с движением поперёк неё: x={}",
+            player.position.x
+        );
+    }
+
+    #[test]
+    fn walking_into_an_obstacle_stops_before_it() {
+        let obstacle =
+            Aabb::from_center_half_extents(vec3(0.0, 0.75, -3.0), vec3(0.75, 0.75, 0.75));
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        let input = Input {
+            forward: true,
+            ..no_movement()
+        };
+        for _ in 0..120 {
+            player.move_on_floor(&input, &[obstacle], 5.0, 1.0 / 60.0);
+        }
+        assert!(
+            player.position.z > obstacle.max.z,
+            "игрок оказался внутри куба-препятствия или прошёл сквозь него: z={}",
+            player.position.z
+        );
+    }
+
+    #[test]
+    fn walking_past_an_obstacle_is_not_blocked() {
+        let obstacle =
+            Aabb::from_center_half_extents(vec3(3.0, 0.75, -3.0), vec3(0.75, 0.75, 0.75));
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        let input = Input {
+            forward: true,
+            ..no_movement()
+        };
+        for _ in 0..120 {
+            player.move_on_floor(&input, &[obstacle], 5.0, 1.0 / 60.0);
+        }
+        assert!(
+            player.position.z < obstacle.min.z,
+            "движение мимо препятствия сбоку было заблокировано: z={}",
+            player.position.z
+        );
+    }
+
+    #[test]
+    fn the_player_never_passes_through_any_of_the_four_room_walls() {
+        let room = crate::room::Room::new();
+        let colliders = room.colliders();
+        let directions = [
+            Input {
+                forward: true,
+                ..no_movement()
+            },
+            Input {
+                back: true,
+                ..no_movement()
+            },
+            Input {
+                left: true,
+                ..no_movement()
+            },
+            Input {
+                right: true,
+                ..no_movement()
+            },
+        ];
+        for input in directions {
+            let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+            for _ in 0..2000 {
+                player.move_on_floor(&input, &colliders, 5.0, 1.0 / 60.0);
+            }
+            assert!(
+                player.position.x.abs() <= room.width / 2.0 + 1e-3,
+                "игрок вышел за восточную/западную стену: x={}",
+                player.position.x
+            );
+            assert!(
+                player.position.z.abs() <= room.depth / 2.0 + 1e-3,
+                "игрок вышел за северную/южную стену: z={}",
+                player.position.z
+            );
+        }
+    }
+
+    #[test]
+    fn falling_onto_an_obstacle_top_stops_the_fall_and_sets_on_ground() {
+        let obstacle = Aabb::from_center_half_extents(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 1.0));
+        let mut player = Player::new(vec3(0.0, 20.0, 0.0));
+        for _ in 0..600 {
+            // Пол далеко внизу (floor_level -100), чтобы приземление сработало только от куба.
+            player.apply_gravity(9.8, 1.0 / 60.0, -100.0, &[obstacle]);
+        }
+        assert!(
+            player.on_ground,
+            "игрок не оказался «на земле» после падения на куб"
+        );
+        assert_eq!(
+            player.velocity_y, 0.0,
+            "вертикальная скорость не обнулена после приземления на куб"
+        );
+        assert!(
+            !player.aabb().intersects(&obstacle),
+            "игрок провалился в куб вместо того, чтобы остановиться на его верхней грани"
+        );
+    }
+
+    #[test]
+    fn jumping_under_an_obstacle_kills_the_rise_and_does_not_pass_through() {
+        let obstacle = Aabb::from_center_half_extents(vec3(0.0, 3.0, 0.0), vec3(1.0, 1.0, 1.0));
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        player.velocity_y = 20.0;
+        for _ in 0..30 {
+            player.apply_gravity(9.8, 1.0 / 60.0, 0.0, &[obstacle]);
+        }
+        assert!(
+            !player.aabb().intersects(&obstacle),
+            "игрок прошёл сквозь нижнюю грань препятствия"
         );
     }
 }

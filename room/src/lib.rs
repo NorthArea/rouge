@@ -71,12 +71,14 @@ pub async fn run() {
         //    иначе скорость зависела бы от частоты кадров. Прыжок — до гравитации: он лишь задаёт
         //    вертикальную скорость, а гравитация в этом же кадре уже начинает её гасить.
         player.look(input.mouse_delta, MOUSE_SENSITIVITY);
-        player.move_on_floor(&input, MOVE_SPEED, delta_time);
+        let colliders = room.colliders();
+        player.move_on_floor(&input, &colliders, MOVE_SPEED, delta_time);
         player.jump(&input);
-        player.apply_gravity(GRAVITY, delta_time, room.floor_level);
+        player.apply_gravity(GRAVITY, delta_time, room.floor_level, &colliders);
 
-        // 4. Проверка столкновений — пусто: геометрия как данные для столкновений появляется на
-        //    T-ROOM-7.
+        // 4. Проверка столкновений — уже выполнена внутри стадии 3: горизонтальное движение и
+        //    падение/приземление разрешаются по осям против `colliders` в том же вызове, что их
+        //    применяет (D-43).
 
         // 5. Рендеринг. Камера стоит в позиции игрока и смотрит по направлению его взгляда — та же
         //    привязка камеры к игроку, что и в Asteroids/Shooter, только в трёх измерениях.
