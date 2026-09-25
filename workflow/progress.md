@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-ROOM-3
 LAST_COMPLETED_TASK: T-ROOM-2
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: pending/T-ROOM-2
+LAST_CHECKPOINT: e87eb1f/T-ROOM-2
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-3 (взгляд: yaw/pitch, ограничение pitch, чувствительность мыши, захват курсора, камера в позиции игрока по направлению взгляда).
 
 ## Реестр статусов задач
