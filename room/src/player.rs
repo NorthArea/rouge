@@ -11,6 +11,9 @@ pub const PITCH_LIMIT: f32 = 89.0 / 180.0 * std::f32::consts::PI;
 /// высоту над ним, чтобы камера (которая стоит в `position`) оказалась на высоте глаз, а не в полу.
 pub const EYE_HEIGHT: f32 = 1.6;
 
+/// Импульс прыжка — вертикальная скорость, которую получает игрок при отрыве от земли.
+pub const JUMP_IMPULSE: f32 = 8.0;
+
 /// Игрок как данные (D-44): позиция, взгляд, вертикальная скорость и признак «на земле».
 pub struct Player {
     pub position: Vec3,
@@ -46,6 +49,16 @@ impl Player {
             self.velocity_y = 0.0;
             self.on_ground = true;
         } else {
+            self.on_ground = false;
+        }
+    }
+
+    /// Прыжок — только с земли. `Input::jump` уже читается как «нажатие» (`is_key_pressed`), не
+    /// «удержание» (D-47: запрет второго прыжка в воздухе держит признак «на земле», а не счётчик
+    /// или таймер — у Game 05 таймеров нет вовсе).
+    pub fn jump(&mut self, input: &Input) {
+        if input.jump && self.on_ground {
+            self.velocity_y = JUMP_IMPULSE;
             self.on_ground = false;
         }
     }
@@ -222,6 +235,7 @@ mod tests {
             back: false,
             left: false,
             right: false,
+            jump: false,
         }
     }
 
@@ -411,6 +425,84 @@ mod tests {
         assert!(
             !player.on_ground,
             "признак «на земле» остался истинным в воздухе"
+        );
+    }
+
+    #[test]
+    fn jumping_from_the_ground_makes_the_vertical_velocity_positive_and_clears_on_ground() {
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        player.on_ground = true;
+        let input = Input {
+            jump: true,
+            ..no_movement()
+        };
+        player.jump(&input);
+        assert!(
+            player.velocity_y > 0.0,
+            "скорость после прыжка не положительная: {}",
+            player.velocity_y
+        );
+        assert!(
+            !player.on_ground,
+            "признак «на земле» остался истинным после прыжка"
+        );
+    }
+
+    #[test]
+    fn jumping_in_the_air_does_not_change_the_vertical_velocity() {
+        let mut player = Player::new(vec3(0.0, 20.0, 0.0));
+        player.on_ground = false;
+        player.velocity_y = -3.0;
+        let input = Input {
+            jump: true,
+            ..no_movement()
+        };
+        player.jump(&input);
+        assert_eq!(
+            player.velocity_y, -3.0,
+            "прыжок в воздухе изменил вертикальную скорость: {}",
+            player.velocity_y
+        );
+    }
+
+    #[test]
+    fn gravity_returns_the_player_to_the_ground_after_a_jump() {
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        player.on_ground = true;
+        let jump_input = Input {
+            jump: true,
+            ..no_movement()
+        };
+        player.jump(&jump_input);
+        for _ in 0..600 {
+            player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        }
+        assert!(
+            player.on_ground,
+            "игрок после прыжка не вернулся на землю через 10 секунд падения"
+        );
+        assert_eq!(player.position.y, EYE_HEIGHT);
+    }
+
+    #[test]
+    fn holding_jump_does_not_grant_a_second_jump_before_landing() {
+        let mut player = Player::new(vec3(0.0, EYE_HEIGHT, 0.0));
+        player.on_ground = true;
+        let jump_input = Input {
+            jump: true,
+            ..no_movement()
+        };
+        player.jump(&jump_input);
+        let velocity_after_first_jump = player.velocity_y;
+        // Клавиша всё ещё "нажата" в следующем кадре — Input.jump тоже true, как если бы вызов
+        // is_key_pressed по ошибке заменили на is_key_down.
+        player.apply_gravity(9.8, 1.0 / 60.0, 0.0);
+        player.jump(&jump_input);
+        assert!(
+            player.velocity_y <= velocity_after_first_jump,
+            "второй прыжок в воздухе увеличил скорость: было {}, стало {}",
+            velocity_after_first_jump,
+            player.velocity_y
         );
     }
 

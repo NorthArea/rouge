@@ -58,6 +58,8 @@ pub async fn run() {
             back: is_key_down(KeyCode::S),
             left: is_key_down(KeyCode::A),
             right: is_key_down(KeyCode::D),
+            // Нажатие, а не удержание (см. комментарий у поля `Input::jump`).
+            jump: is_key_pressed(KeyCode::Space),
         };
 
         // 2. Delta time — из него считается и движение по полу.
@@ -65,9 +67,11 @@ pub async fn run() {
 
         // 3. Обновление состояния. Взгляд поворачивается прямо от смещения мыши за кадр — mouse
         //    look не умножается на delta time, он уже per-frame величина; движение по полу — умножается,
-        //    иначе скорость зависела бы от частоты кадров.
+        //    иначе скорость зависела бы от частоты кадров. Прыжок — до гравитации: он лишь задаёт
+        //    вертикальную скорость, а гравитация в этом же кадре уже начинает её гасить.
         player.look(input.mouse_delta, MOUSE_SENSITIVITY);
         player.move_on_floor(&input, MOVE_SPEED, delta_time);
+        player.jump(&input);
         player.apply_gravity(GRAVITY, delta_time, room.floor_level);
 
         // 4. Проверка столкновений — пусто: геометрия как данные для столкновений появляется на

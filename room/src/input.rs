@@ -9,4 +9,8 @@ pub struct Input {
     pub back: bool,
     pub left: bool,
     pub right: bool,
+    /// Прыжок — «нажатие», а не «удержание» (в `lib.rs::run()` читается `is_key_pressed`, не
+    /// `is_key_down`). Ловушка позиции: если бы читалось как удержание, игрок с зажатым `Space`
+    /// прыгал бы каждый кадр, в котором касается пола.
+    pub jump: bool,
 }
