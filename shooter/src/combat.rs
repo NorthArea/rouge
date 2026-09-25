@@ -49,8 +49,11 @@ pub fn resolve(
     });
     score.add(destroyed_positions.len() as u32 * ENEMY_KILL_POINTS);
 
+    // `consumed_iter` всегда даёт ровно один элемент на каждый вызов замыкания — та же длина, что
+    // и `bullets` в момент построения `consumed` — но `unwrap_or` вместо `unwrap()` не оставляет в
+    // продакшн-коде паники даже структурно недостижимой (D-07).
     let mut consumed_iter = consumed.into_iter();
-    bullets.retain(|_| !consumed_iter.next().unwrap());
+    bullets.retain(|_| !consumed_iter.next().unwrap_or(false));
 
     destroyed_positions
 }
