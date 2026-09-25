@@ -9,32 +9,46 @@ const START_ASTEROIDS: u32 = 4;
 /// игрока в момент старта. Радиус столкновения корабля появится только в `T-AST-8` (D-27), поэтому
 /// здесь используется консервативная оценка, а не публичная константа корабля.
 const MIN_SPAWN_DISTANCE: f32 = 180.0;
+/// Угол отклонения осколка от направления родителя, симметрично в обе стороны.
+const SPLIT_ANGLE: f32 = std::f32::consts::FRAC_PI_6;
 
-/// Обычное перечисление без иерархий и trait'ов (D-02, D-25): радиус и скорость — чистые функции
-/// размера, а не отдельные структуры-стратегии.
-///
-/// **Решение по scope, принятое при реализации `T-AST-6`** (тот же приём, что для `velocity`
-/// корабля на `T-AST-2`): `Medium` и `Small` здесь не объявлены. Первая волна по заданию состоит из
-/// крупных астероидов, разбиение на меньшие приходит только с `T-AST-7`, а необъявленный вариант без
-/// единого места, где он реально создаётся (не в тесте), — это `-D dead-code` под `cargo build
-/// --workspace`: `cargo test` компилирует `#[cfg(test)]` и не заметил бы этого, а `cargo build`
-/// компилирует без него. `T-AST-7` добавляет оба варианта вместе с первым потребителем — разбиением
-/// `Large → Medium → Small`, и туда же переезжает тест на убывание радиуса по всем трём размерам.
+/// Обычное перечисление без иерархий и trait'ов (D-02, D-25): радиус, скорость и очки — чистые
+/// функции размера, а не отдельные структуры-стратегии. `Medium` и `Small` добавлены здесь, в
+/// `T-AST-7`, вместе с первым потребителем — разбиением (см. `Asteroid::split`); на `T-AST-6` у них
+/// не было бы потребителя вне теста, что `cargo build --workspace` ловит как dead code.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum AsteroidSize {
     Large,
+    Medium,
+    Small,
 }
 
 impl AsteroidSize {
     pub fn radius(self) -> f32 {
         match self {
             AsteroidSize::Large => 40.0,
+            AsteroidSize::Medium => 24.0,
+            AsteroidSize::Small => 12.0,
         }
     }
 
+    /// Скорость растёт при уменьшении размера — мелкий осколок отскакивает быстрее крупного
+    /// родителя (классическое поведение Asteroids).
     pub fn speed(self) -> f32 {
         match self {
             AsteroidSize::Large => 60.0,
+            AsteroidSize::Medium => 100.0,
+            AsteroidSize::Small => 150.0,
+        }
+    }
+
+    /// Мелкую цель труднее сбить, поэтому она дороже — классическое Asteroids, а не опечатка
+    /// (объясняется в README, `T-AST-12`).
+    pub fn points(self) -> u32 {
+        match self {
+            AsteroidSize::Large => 20,
+            AsteroidSize::Medium => 50,
+            AsteroidSize::Small => 100,
         }
     }
 }
@@ -59,6 +73,31 @@ impl Asteroid {
     pub fn wrap(&mut self, field: Field) {
         self.position.x = self.position.x.rem_euclid(field.width);
         self.position.y = self.position.y.rem_euclid(field.height);
+    }
+
+    /// `Large` → два `Medium`, `Medium` → два `Small`, `Small` — пустой вектор. Осколки летят из
+    /// той же точки, что и родитель, отклонённые от направления родителя на фиксированный угол в
+    /// разные стороны (детерминированно, без RNG — D-30) и на повышенной скорости своего размера.
+    pub fn split(&self) -> Vec<Asteroid> {
+        let child_size = match self.size {
+            AsteroidSize::Large => AsteroidSize::Medium,
+            AsteroidSize::Medium => AsteroidSize::Small,
+            AsteroidSize::Small => return Vec::new(),
+        };
+        let direction = if self.velocity.length() > 0.0 {
+            self.velocity.normalize()
+        } else {
+            Vec2::X
+        };
+
+        [SPLIT_ANGLE, -SPLIT_ANGLE]
+            .into_iter()
+            .map(|angle| Asteroid {
+                position: self.position,
+                velocity: Vec2::from_angle(angle).rotate(direction) * child_size.speed(),
+                size: child_size,
+            })
+            .collect()
     }
 }
 

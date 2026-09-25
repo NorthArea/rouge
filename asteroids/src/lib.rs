@@ -2,10 +2,14 @@ use macroquad::prelude::*;
 
 mod asteroid;
 mod bullet;
+mod collision;
+mod combat;
+mod score;
 mod ship;
 
 use asteroid::Asteroid;
 use bullet::{Bullet, Weapon};
+use score::Score;
 use ship::Ship;
 
 /// Оформление минималистичное и целиком собрано из примитивов Macroquad: внешних assets в проекте нет.
@@ -38,6 +42,7 @@ pub async fn run() {
     let mut bullets: Vec<Bullet> = Vec::new();
     let mut weapon = Weapon::new();
     let mut asteroids: Vec<Asteroid> = asteroid::spawn_wave(1, field);
+    let mut score = Score::new();
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке: порядок стадий — часть
@@ -86,7 +91,8 @@ pub async fn run() {
         }
 
         // 4. Проверка столкновений.
-        //    Появится вместе со столкновением пули и астероида (T-AST-7).
+        combat::resolve(&mut bullets, &mut asteroids, &mut score);
+        //    Столкновение корабля с астероидом — T-AST-8.
 
         // 5. Рендеринг.
         draw_field(field);
@@ -132,12 +138,12 @@ fn draw_engine_flame(ship: &Ship) {
 
 /// Пуля рисуется квадратом по прецеденту мяча в Pong/Arkanoid (D-12).
 fn draw_bullet(bullet: &Bullet) {
-    const SIZE: f32 = 4.0;
+    let size = bullet::BULLET_RADIUS * 2.0;
     draw_rectangle(
-        bullet.position.x - SIZE / 2.0,
-        bullet.position.y - SIZE / 2.0,
-        SIZE,
-        SIZE,
+        bullet.position.x - size / 2.0,
+        bullet.position.y - size / 2.0,
+        size,
+        size,
         FIELD_COLOR,
     );
 }

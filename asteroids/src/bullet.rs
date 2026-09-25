@@ -10,6 +10,9 @@ const BULLET_SPEED: f32 = 600.0;
 const BULLET_LIFETIME: f32 = 1.2;
 /// Пауза между выстрелами, секунд.
 const SHOOT_COOLDOWN: f32 = 0.3;
+/// Радиус пули для столкновения круг-круг (D-27) — совпадает с половиной стороны квадрата отрисовки
+/// в `lib.rs`, чтобы изображение и модель столкновений не расходились.
+pub const BULLET_RADIUS: f32 = 2.0;
 
 pub struct Bullet {
     pub position: Vec2,
@@ -24,6 +27,17 @@ impl Bullet {
         Self {
             position: ship.nose_position(),
             velocity: ship.velocity + ship.facing() * BULLET_SPEED,
+            time_to_live: BULLET_LIFETIME,
+        }
+    }
+
+    /// Конструктор для тестов столкновения в `combat.rs`, где нужна пуля в заданной точке без
+    /// разгона от корабля. `spawn` остаётся единственным путём, которым пуля рождается в игре.
+    #[cfg(test)]
+    pub(crate) fn at(position: Vec2, velocity: Vec2) -> Self {
+        Self {
+            position,
+            velocity,
             time_to_live: BULLET_LIFETIME,
         }
     }
