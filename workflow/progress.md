@@ -9,7 +9,7 @@ CURRENT_TASK: none
 NEXT_BACKLOG_ID: T-AST-12
 LAST_COMPLETED_TASK: T-AST-11
 LAST_GREEN_COMMAND: make check
-LAST_CHECKPOINT: 3d52587/T-AST-10
+LAST_CHECKPOINT: c88a1f6/T-AST-11
 NEXT_ACTION: Выполнить /workflow:build — developer берёт T-AST-12 (asteroids/README.md по пунктам задания).
 
 ## Реестр статусов задач
