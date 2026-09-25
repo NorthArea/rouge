@@ -1,4 +1,4 @@
 [workspace]
 resolver = "2"
-members = ["pong", "arkanoid", "menu", "asteroids", "shooter"]
+members = ["pong", "arkanoid", "menu", "asteroids", "shooter", "room"]
 default-members = ["menu"]
