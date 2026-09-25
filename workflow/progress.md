@@ -6,11 +6,11 @@
 
 PROJECT_STATUS: IN_PROGRESS
 CURRENT_TASK: none
-NEXT_BACKLOG_ID: T-ROOM-1
+NEXT_BACKLOG_ID: T-ROOM-2
 LAST_COMPLETED_TASK: T-TDS-15
 LAST_GREEN_COMMAND: make check
 LAST_CHECKPOINT: 6003525/T-TDS-15
-NEXT_ACTION: владелец выполняет `cargo run` по чек-листу приёмки T-TDS-15; затем управляющий отдаёт T-ROOM-1 architect.
+NEXT_ACTION: Выполнить /workflow:build — developer берёт T-ROOM-2 (крейт `room`, окно, `Camera3D` с перспективой и FOV, комната из пола, стен и кубов). Параллельно открыт наблюдаемый прогон Game 04 владельцем по чек-листу T-TDS-15.
 
 ## Реестр статусов задач
 
