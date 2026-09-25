@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 
+mod aabb;
 mod input;
 mod player;
 mod room;

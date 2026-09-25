@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 
+use crate::aabb::Aabb;
 use crate::input::Input;
 
 /// Предел pitch — чуть меньше строгой вертикали. Ровно вертикаль исключена намеренно: в ней
@@ -13,6 +14,13 @@ pub const EYE_HEIGHT: f32 = 1.6;
 
 /// Импульс прыжка — вертикальная скорость, которую получает игрок при отрыве от земли.
 pub const JUMP_IMPULSE: f32 = 8.0;
+
+/// Половинные размеры коробки столкновений игрока. Высота коробки (`2 * 0.9 = 1.8`) больше
+/// `EYE_HEIGHT`: глаза стоят не на самом верху тела, а ближе к нему, как у человека. Смещение,
+/// нужное, чтобы низ коробки лежал на полу, когда `position.y` — на высоте глаз, считается в
+/// `Player::aabb`, а не хранится отдельным полем — оно целиком выводится из `EYE_HEIGHT` и высоты
+/// коробки.
+pub const HALF_EXTENTS: Vec3 = vec3(0.4, 0.9, 0.4);
 
 /// Игрок как данные (D-44): позиция, взгляд, вертикальная скорость и признак «на земле».
 pub struct Player {
@@ -32,6 +40,17 @@ impl Player {
             yaw: 0.0,
             pitch: 0.0,
         }
+    }
+
+    /// Коробка столкновений игрока по текущей позиции — строится заново на каждый вызов, а не
+    /// хранится: она обязана двигаться вместе с игроком без отдельного шага синхронизации.
+    /// `position.y` — высота глаз, а не центр тела, поэтому центр коробки смещён вниз на
+    /// `EYE_HEIGHT - HALF_EXTENTS.y`. Первый потребитель вне тестов — разрешение столкновений по
+    /// осям (`T-ROOM-8`).
+    #[allow(dead_code)]
+    pub fn aabb(&self) -> Aabb {
+        let center = self.position - vec3(0.0, EYE_HEIGHT - HALF_EXTENTS.y, 0.0);
+        Aabb::from_center_half_extents(center, HALF_EXTENTS)
     }
 
     /// Падение под гравитацией и приземление. Порядок операций фиксирован и больше не меняется:
@@ -515,6 +534,28 @@ mod tests {
             player.position.y, EYE_HEIGHT,
             "игрок на полу сдвинулся за кадр без ввода: {}",
             player.position.y
+        );
+    }
+
+    #[test]
+    fn the_player_box_is_built_from_position_and_half_extents_and_moves_with_it() {
+        let mut player = Player::new(vec3(1.0, EYE_HEIGHT, 2.0));
+        let aabb_before = player.aabb();
+        let expected_center_before = vec3(1.0, HALF_EXTENTS.y, 2.0);
+        assert!(
+            ((aabb_before.min + aabb_before.max) / 2.0 - expected_center_before).length() < 1e-5,
+            "центр коробки не совпал с ожидаемым: {:?}",
+            (aabb_before.min + aabb_before.max) / 2.0
+        );
+
+        let delta = vec3(3.0, 0.0, -1.0);
+        player.position += delta;
+        let aabb_after = player.aabb();
+        assert!(
+            (aabb_after.min - (aabb_before.min + delta)).length() < 1e-5,
+            "коробка не сдвинулась вместе с игроком: было {:?}, стало {:?}",
+            aabb_before.min,
+            aabb_after.min
         );
     }
 }
