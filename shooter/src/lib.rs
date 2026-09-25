@@ -3,11 +3,16 @@ use macroquad::prelude::*;
 mod arena;
 mod bullet;
 mod camera;
+mod enemy;
 mod player;
 
 use arena::Arena;
 use bullet::Bullet;
+use enemy::Enemy;
 use player::Player;
+
+/// Цвет врага — другой, чтобы он отличался от игрока и пуль на глаз.
+const ENEMY_COLOR: Color = Color::new(0.85, 0.25, 0.25, 1.0);
 
 /// Размер окна, тот же, что в `window_conf` (`main.rs`). Используется камерой, чтобы вычислить, какая
 /// часть арены видна, поэтому число не может разойтись с настройками окна незаметно.
@@ -31,6 +36,7 @@ pub async fn run() {
     let mut player = Player::new(vec2(arena.width / 2.0, arena.height / 2.0));
     let mut bullets: Vec<Bullet> = Vec::new();
     let mut shoot_cooldown = 0.0;
+    let mut enemies: Vec<Enemy> = enemy::spawn_wave(1, arena, player.position);
 
     loop {
         // Кадр всегда проходит одни и те же стадии в одном и том же порядке (D-09) — порядок стадий
@@ -70,6 +76,9 @@ pub async fn run() {
             bullet.advance(delta_time);
         }
         bullet::remove_expired(&mut bullets, arena);
+        for enemy in &mut enemies {
+            enemy.chase(player.position, delta_time);
+        }
 
         // 4. Проверка столкновений. Пока нечего проверять.
 
@@ -83,6 +92,9 @@ pub async fn run() {
         draw_player(&player);
         for bullet in &bullets {
             draw_bullet(bullet);
+        }
+        for enemy in &enemies {
+            draw_enemy(enemy);
         }
         set_default_camera();
 
@@ -99,6 +111,16 @@ fn draw_bullet(bullet: &Bullet) {
         bullet.position.y,
         bullet::BULLET_RADIUS,
         ARENA_COLOR,
+    );
+}
+
+/// Кругом другого цвета, чем игрок — чтобы враг отличался на глаз.
+fn draw_enemy(enemy: &Enemy) {
+    draw_circle(
+        enemy.position.x,
+        enemy.position.y,
+        enemy.radius,
+        ENEMY_COLOR,
     );
 }
 
